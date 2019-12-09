@@ -163,21 +163,23 @@ class TrialModel(BaseModel):
         return trial
 
     @classmethod
-    def find_max_value_trial(cls, study_id, session):
-        # type: (int, orm.Session) -> TrialModel
-        trial = session.query(cls) \
-            .filter(cls.study_id == study_id) \
-            .order_by(desc(cls.value)).limit(1).one_or_none()
+    def find_max_value_trial(cls, study_id, session, state=None):
+        # type: (int, orm.Session, Optional[TrialState]) -> TrialModel
+        trial = session.query(cls).filter(cls.study_id == study_id)
+        if state is not None:
+            trial = trial.filter(cls.state == state)
+        trial = trial.order_by(desc(cls.value)).limit(1).one_or_none()
         if trial is None:
             raise ValueError(NOT_FOUND_MSG)
         return trial
 
     @classmethod
-    def find_min_value_trial(cls, study_id, session):
-        # type: (int, orm.Session) -> TrialModel
-        trial = session.query(cls) \
-            .filter(cls.study_id == study_id) \
-            .order_by(asc(cls.value)).limit(1).one_or_none()
+    def find_min_value_trial(cls, study_id, session, state=None):
+        # type: (int, orm.Session, Optional[TrialState]) -> TrialModel
+        trial = session.query(cls).filter(cls.study_id == study_id)
+        if state is not None:
+            trial = trial.filter(cls.state == state)
+        trial = trial.order_by(asc(cls.value)).limit(1).one_or_none()
         if trial is None:
             raise ValueError(NOT_FOUND_MSG)
         return trial

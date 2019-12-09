@@ -676,9 +676,11 @@ class RDBStorage(BaseStorage):
 
         session = self.scoped_session()
         if self.get_study_direction(study_id) == structs.StudyDirection.MAXIMIZE:
-            trial = models.TrialModel.find_max_value_trial(study_id, session)
+            trial = models.TrialModel.find_max_value_trial(
+                study_id, session, state=structs.TrialState.COMPLETE)
         else:
-            trial = models.TrialModel.find_min_value_trial(study_id, session)
+            trial = models.TrialModel.find_min_value_trial(
+                study_id, session, state=structs.TrialState.COMPLETE)
 
         params = models.TrialParamModel.where_trial(trial, session)
         values = models.TrialValueModel.where_trial(trial, session)
