@@ -43,7 +43,7 @@ jobs:
           command: |
             if [[ -n "${CIRCLE_PULL_REQUEST}" ]]; then
               # TODO: Any ways to get PR destination branch dynamically?
-              PR_DEST_BRANCH=master
+              PR_DEST_BRANCH=test-merge-master-foo
 
               # CIRCLE_PR_NUMBER is available only if PR is created from a fork (unavailable if created from a branch).
               # So, manually construct it from CIRCLE_PULL_REQUEST environment variable.
