@@ -1,7 +1,6 @@
-version: 2
+version: 2.1
 
 workflows:
-  version: 2
   commit-build:
     jobs:
       - checks
@@ -27,6 +26,28 @@ workflows:
       - examples-python37
       - examples-python36
       - examples-python35
+
+
+commands:
+  install:
+    steps:
+      - run:
+          command: |
+            sudo apt-get update
+            sudo apt-get -y install openmpi-bin libopenmpi-dev
+            python -m venv venv || virtualenv venv
+            . venv/bin/activate
+            pip install -U pip
+            pip install --progress-bar off -U setuptools
+            python setup.py sdist
+
+            # Install minimal dependencies and confirm that `import optuna` is successful.
+            pip install --progress-bar off $(ls dist/*.tar.gz)
+            python -c 'import optuna'
+
+            # Install all dependencies needed for testing.
+            pip install --progress-bar off $(ls dist/*.tar.gz)[testing]
+
 
 jobs:
 
@@ -114,23 +135,7 @@ jobs:
     steps:
       - checkout
 
-      - run: &install
-          name: install
-          command: |
-            sudo apt-get update
-            sudo apt-get -y install openmpi-bin libopenmpi-dev
-            python -m venv venv || virtualenv venv
-            . venv/bin/activate
-            pip install -U pip
-            pip install --progress-bar off -U setuptools
-            python setup.py sdist
-
-            # Install minimal dependencies and confirm that `import optuna` is successful.
-            pip install --progress-bar off $(ls dist/*.tar.gz)
-            python -c 'import optuna'
-
-            # Install all dependencies needed for testing.
-            pip install --progress-bar off $(ls dist/*.tar.gz)[testing]
+      - install
 
       - run: &tests
           name: tests
@@ -154,7 +159,7 @@ jobs:
     steps:
       - checkout
 
-      - run: *install
+      - install
 
       - run:
           <<: *tests
@@ -173,7 +178,7 @@ jobs:
     docker:
       - image: circleci/python:3.6
     steps:
-      [checkout, run: *install, run: *tests, run: *tests-mn]
+      [checkout, install, run: *tests, run: *tests-mn]
 
   tests-python35:
     docker:
@@ -181,7 +186,7 @@ jobs:
     steps:
       - checkout
 
-      - run: *install
+      - install
 
       - run:
           <<: *tests
@@ -197,7 +202,7 @@ jobs:
     steps:
       - checkout
 
-      - run: *install
+      - install
 
       - run:
           name: install-codecov
@@ -223,7 +228,7 @@ jobs:
     steps:
       - checkout
 
-      - run: *install
+      - install
 
       - run: &install-examples
           name: install-examples
@@ -266,7 +271,7 @@ jobs:
     steps:
       - checkout
 
-      - run: *install
+      - install
 
       - run: *install-examples
 
@@ -282,7 +287,7 @@ jobs:
     docker:
       - image: circleci/python:3.6
     steps:
-      [checkout, run: *install, run: *install-examples, run: *examples, run: *examples-mn]
+      [checkout, install, run: *install-examples, run: *examples, run: *examples-mn]
 
   examples-python35:
     docker:
@@ -290,7 +295,7 @@ jobs:
     steps:
       - checkout
 
-      - run: *install
+      - install
 
       - run: *install-examples
 
