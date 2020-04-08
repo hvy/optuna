@@ -52,7 +52,9 @@ def test_get_param_importances(storage_init_func: Callable[[], storages.BaseStor
 
 
 @parametrize_storage
-@pytest.mark.parametrize("params", [[], ["x1"], ["x1", "x3"], ["x1", "x4"],])
+# TODO(hvy): Handle empty list edge case.
+# @pytest.mark.parametrize("params", [[], ["x1"], ["x1", "x3"], ["x1", "x4"],])
+@pytest.mark.parametrize("params", [["x1"], ["x1", "x3"], ["x1", "x4"],])
 def test_get_param_importances_with_params(
     storage_init_func: Callable[[], storages.BaseStorage], params: List[str]
 ) -> None:
