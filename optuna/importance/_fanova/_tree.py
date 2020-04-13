@@ -5,15 +5,18 @@ from typing import Set
 from typing import Tuple
 
 import numpy
-import sklearn.tree
 
 from optuna.importance._fanova._stats import _WeightedRunningStats
+from optuna import type_checking
+
+if type_checking.TYPE_CHECKING:
+    import sklearn.tree
 
 
 class _FanovaTree(object):
     def __init__(
         self,
-        tree: sklearn.tree._tree.Tree,
+        tree: "sklearn.tree._tree.Tree",
         search_spaces: numpy.ndarray,
         search_spaces_is_categorical: List[bool],
         raw_features_to_features: List[int],
