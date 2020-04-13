@@ -1,15 +1,15 @@
 class _RunningStats(object):
-    def __init__(self, N=0, avg=0, sdm=0):
+    def __init__(self, N: int = 0, avg: float = 0.0, sdm: float = 0.0) -> None:
         self.N = N
         self.avg = avg
         self.sdm = sdm
 
-    def __mul__(self, other):
-        if not isinstance(other, (int, float)):
+    def __mul__(self, other: float) -> "_RunningStats":
+        if not isinstance(other, float):
             raise NotImplementedError
         return _RunningStats(self.N, self.avg * other, self.sdm * other * other)
 
-    def __iadd__(self, other):
+    def __iadd__(self, other: "_RunningStats") -> "_RunningStats":
         N_total = self.N + other.N
         n1 = self.N
         n2 = other.N
@@ -28,25 +28,27 @@ class _RunningStats(object):
         self.N = N_total
         return self
 
-    def push(self, x):
+    def push(self, x: float) -> None:
         self.N += 1
         delta = x - self.avg
         self.avg += delta / self.N
         self.sdm += delta * (x - self.avg)
 
-    def sum(self):
+    def sum(self) -> float:
         return self.avg * self.N
 
 
 class _WeightedRunningStats(object):
-    def __init__(self, avg=0, sdm=0, weight_stat=None):
+    def __init__(
+        self, avg: float = 0.0, sdm: float = 0.0, weight_stat: _RunningStats = None
+    ) -> None:
         self.avg = avg
         self.sdm = sdm
         if weight_stat is None:
             weight_stat = _RunningStats()
         self.weight_stat = weight_stat
 
-    def __iadd__(self, other):
+    def __iadd__(self, other: "_WeightedRunningStats") -> "_WeightedRunningStats":
         sw1 = self.weight_stat.sum()
         sw2 = other.weight_stat.sum()
         swt = sw1 + sw2
@@ -62,8 +64,8 @@ class _WeightedRunningStats(object):
         self.weight_stat += other.weight_stat
         return self
 
-    def push(self, x, weight):
-        assert weight > 0
+    def push(self, x: float, weight: float) -> None:
+        assert weight > 0.0
 
         delta = x - self.avg
 
@@ -72,21 +74,21 @@ class _WeightedRunningStats(object):
         self.avg += delta * weight / self.weight_stat.sum()
         self.sdm += delta * weight * (x - self.avg)
 
-    def mean(self):
-        if self.weight_stat.sum() > 0:
+    def mean(self) -> float:
+        if self.weight_stat.sum() > 0.0:
             return self.avg
         return float("nan")
 
-    def multiply_weights_by(self, a):
+    def multiply_weights_by(self, a: float) -> "_WeightedRunningStats":
         return _WeightedRunningStats(self.avg, a * self.sdm, self.weight_stat * a)
 
-    def sum_of_weights(self):
+    def sum_of_weights(self) -> float:
         return self.weight_stat.sum()
 
-    def variance_population(self):
+    def variance_population(self) -> float:
         return self.divide_sdm_by(self.weight_stat.sum(), 0.0)
 
-    def divide_sdm_by(self, fraction, min_weight):
+    def divide_sdm_by(self, fraction: float, min_weight: float) -> float:
         return (
             max(0.0, self.sdm / fraction) if self.weight_stat.sum() > min_weight else float("nan")
         )
