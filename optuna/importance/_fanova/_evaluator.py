@@ -7,6 +7,10 @@ import numpy
 
 from optuna._experimental import experimental
 from optuna.distributions import CategoricalDistribution
+from optuna.distributions import DiscreteUniformDistribution
+from optuna.distributions import IntUniformDistribution
+from optuna.distributions import LogUniformDistribution
+from optuna.distributions import UniformDistribution
 from optuna.importance._base import _get_distributions
 from optuna.importance._base import _get_study_data
 from optuna.importance._base import BaseImportanceEvaluator
@@ -52,12 +56,22 @@ class FanovaImportanceEvaluator(BaseImportanceEvaluator):
         for i, distribution in enumerate(distributions.values()):
             if isinstance(distribution, CategoricalDistribution):
                 search_spaces[i, 0] = 0
-                search_spaces[i, 1] = len(distribution.choices)
+                search_spaces[i, 1] = float(len(distribution.choices))
                 search_spaces_is_categorical.append(True)
-            else:
+            elif isinstance(
+                distribution,
+                (
+                    DiscreteUniformDistribution,
+                    IntUniformDistribution,
+                    LogUniformDistribution,
+                    UniformDistribution,
+                ),
+            ):
                 search_spaces[i, 0] = distribution.low
                 search_spaces[i, 1] = distribution.high
                 search_spaces_is_categorical.append(False)
+            else:
+                assert False
 
         evaluator = self._evaluator
         evaluator.fit(
@@ -69,9 +83,9 @@ class FanovaImportanceEvaluator(BaseImportanceEvaluator):
 
         individual_importances = {}
         for i, name in enumerate(distributions.keys()):
-            imp = evaluator.quantify_importance((i,))
-            imp = imp[(i,)]["individual importance"]
-            individual_importances[name] = imp
+            importance = evaluator.quantify_importance((i,))
+            individual_importance = importance[(i,)]["individual importance"]
+            individual_importances[name] = individual_importance
 
         tot_importance = sum(v for v in individual_importances.values())
         for name in individual_importances.keys():
