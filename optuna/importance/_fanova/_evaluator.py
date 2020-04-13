@@ -20,18 +20,36 @@ from optuna.study import Study
 
 @experimental("1.3.0")
 class FanovaImportanceEvaluator(BaseImportanceEvaluator):
-    """fANOVA parameter importance evaluator.
+    """fANOVA importance evaluator.
+
+    Implements the fANOVA hyperparameter importance evaluation algorithm in
+    `An Efficient Approach for Assessing Hyperparameter Importance
+    <http://proceedings.mlr.press/v32/hutter14.html>`_.
+
+    Given a study, fANOVA fits a random forest regression model that predicts the objective value
+    given a parameter configuration. The more accurate this model is, the more reliable the
+    importances assessed by this class are.
+    It is recommended trials are not skewed, that is, preferably belonging to a study that was
+    optimized using the :class:`~optuna.samplers.RandomSampler`.
 
     .. note::
 
         Requires the `sklearn <https://github.com/scikit-learn/scikit-learn>`_ Python package.
 
-    .. seealso::
+    .. note::
 
-        `An Efficient Approach for Assessing Hyperparameter Importance
-        <http://proceedings.mlr.press/v32/hutter14.html>`_.
+        Pairwise and higher order importances are not supported through this class. They can be
+        computed using :class:`~optuna.importance._fanova._fanova._Fanova` directly but is not
+        recommended as interfaces may change without prior notice.
 
-    # TODO(hvy): Document arguments.
+    Args:
+        n_estimators:
+            The number of trees in the forest.
+        max_depth:
+            The maximum depth of the trees in the forest.
+        random_state:
+            Controls the randomness of the forest. For deterministic behavior, specify a value
+            other than :obj:`None`.
 
     """
 
