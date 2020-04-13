@@ -69,42 +69,6 @@ class _FanovaTree(object):
 
         return stat
 
-    def _precompute_split_midpoints_and_sizes(
-        self,
-    ) -> Tuple[List[numpy.ndarray], List[numpy.ndarray]]:
-        midpoints = []
-        sizes = []
-
-        search_spaces = self._search_spaces
-        for feature, feature_split_values in enumerate(self._compute_features_split_values()):
-            if self._is_categorical(feature):
-                if feature_split_values.size == 0:
-                    # This tree does not split on this feature.
-                    # The feature will therefore have 0 importance in this tree.
-                    midpoint = numpy.zeros(1)
-                    size = numpy.atleast_1d(search_spaces[feature, 1])  # Number of choices.
-                else:
-                    midpoint = feature_split_values
-                    size = numpy.ones(feature_split_values.size)
-            else:
-                feature_split_values = numpy.concatenate(
-                    (
-                        numpy.atleast_1d(search_spaces[feature, 0]),
-                        feature_split_values,
-                        numpy.atleast_1d(search_spaces[feature, 1]),
-                    )
-                )
-                midpoint = 0.5 * (feature_split_values[1:] + feature_split_values[:-1])
-                size = feature_split_values[1:] - feature_split_values[:-1]
-
-            assert midpoint.dtype == numpy.float64
-            assert size.dtype == numpy.float64
-
-            midpoints.append(midpoint)
-            sizes.append(size)
-
-        return midpoints, sizes
-
     def _marginalized_prediction_stat(
         self, feature_vector: numpy.ndarray
     ) -> _WeightedRunningStats:
@@ -170,42 +134,101 @@ class _FanovaTree(object):
 
         return stat
 
-    @property
-    def _n_features(self) -> int:
-        return len(self._search_spaces)
+    def _compute_child_subspaces(
+        self, node_index: int, subspace: numpy.ndarray
+    ) -> Tuple[numpy.ndarray, numpy.ndarray]:
+        left_subspace = numpy.copy(subspace)
+        right_subspace = numpy.copy(subspace)
 
-    @property
-    def _n_nodes(self) -> int:
-        return self._tree.node_count
+        raw_feature = self._get_node_split_raw_feature(node_index)
+        assert raw_feature is not None
+        feature = self._get_feature(raw_feature)
 
-    def _is_node_leaf(self, node_index: int) -> bool:
-        return self._get_node_split_raw_feature(node_index) is None
+        if self._is_categorical(feature):
+            n_choices = subspace[feature, 1]
+            n_choices -= 1
+            left_subspace[feature, 1] = n_choices
+            right_subspace[feature, 1] = n_choices
+        else:
+            threshold = self._get_node_split_threshold(node_index)
+            left_subspace[feature, 1] = threshold
+            right_subspace[feature, 0] = threshold
 
-    def _get_node_left_child(self, node_index: int) -> int:
-        return self._tree.children_left[node_index]
+        # Sanity check.
+        subspace_cardinality = _get_subspace_cardinality(subspace)
+        left_subspace_cardinality = _get_subspace_cardinality(left_subspace)
+        right_subspace_cardinality = _get_subspace_cardinality(right_subspace)
+        assert left_subspace_cardinality < subspace_cardinality
+        assert right_subspace_cardinality < subspace_cardinality
 
-    def _get_node_right_child(self, node_index: int) -> int:
-        return self._tree.children_right[node_index]
+        return left_subspace, right_subspace
 
-    def _get_node_value(self, node_index: int) -> float:
-        return self._tree.value[node_index]
+    def _precompute_split_midpoints_and_sizes(
+        self,
+    ) -> Tuple[List[numpy.ndarray], List[numpy.ndarray]]:
+        midpoints = []
+        sizes = []
 
-    def _get_node_split_threshold(self, node_index: int) -> float:
-        return self._tree.threshold[node_index]
+        search_spaces = self._search_spaces
+        for feature, feature_split_values in enumerate(self._compute_features_split_values()):
+            if self._is_categorical(feature):
+                if feature_split_values.size == 0:
+                    # This tree does not split on this feature.
+                    # The feature will therefore have 0 importance in this tree.
+                    midpoint = numpy.zeros(1)
+                    size = numpy.atleast_1d(search_spaces[feature, 1])  # Number of choices.
+                else:
+                    midpoint = feature_split_values
+                    size = numpy.ones(feature_split_values.size)
+            else:
+                feature_split_values = numpy.concatenate(
+                    (
+                        numpy.atleast_1d(search_spaces[feature, 0]),
+                        feature_split_values,
+                        numpy.atleast_1d(search_spaces[feature, 1]),
+                    )
+                )
+                midpoint = 0.5 * (feature_split_values[1:] + feature_split_values[:-1])
+                size = feature_split_values[1:] - feature_split_values[:-1]
 
-    def _get_node_split_raw_feature(self, node_index: int) -> Optional[int]:
-        raw_feature = self._tree.feature[node_index]
-        return None if raw_feature < 0 else raw_feature
+            assert midpoint.dtype == numpy.float64
+            assert size.dtype == numpy.float64
 
-    def _get_node_children(self, node_index: int) -> Tuple[int, int]:
-        return self._get_node_left_child(node_index), self._get_node_right_child(node_index)
+            midpoints.append(midpoint)
+            sizes.append(size)
 
-    def _is_categorical(self, feature: int) -> bool:
-        return self._search_spaces_is_categorical[feature]
+        return midpoints, sizes
 
-    def _get_feature(self, raw_feature: int) -> int:
-        # Convert one-hot encoded feature index to original feature index.
-        return self._raw_features_to_features[raw_feature]
+    def _compute_features_split_values(self) -> List[numpy.ndarray]:
+        all_split_values = [set() for _ in range(self._n_features)]  # type: List[Set[float]]
+
+        for node_index in range(self._n_nodes):
+            if self._is_node_leaf(node_index):
+                continue
+
+            raw_feature = self._get_node_split_raw_feature(node_index)
+            assert raw_feature is not None
+            feature = self._get_feature(raw_feature)
+
+            if self._is_categorical(feature):
+                if len(all_split_values[feature]) == 0:
+                    n_choices = int(self._search_spaces[feature, 1])
+                    all_split_values[feature].update(range(n_choices))
+            else:
+                threshold = self._get_node_split_threshold(node_index)
+                all_split_values[feature].add(threshold)
+
+        for i in range(len(all_split_values)):
+            split_values = all_split_values[i]
+            split_values = numpy.array(list(split_values), dtype=numpy.float64)
+            # TODO(hvy): Do not shadow variable.
+            assert isinstance(
+                split_values, numpy.ndarray
+            )  # Required for mypy since variable name is reused.
+            split_values.sort()
+            all_split_values[i] = split_values
+
+        return all_split_values
 
     def _precompute_marginal_prediction_stats(self) -> List[_WeightedRunningStats]:
         n_nodes = self._n_nodes
@@ -266,65 +289,42 @@ class _FanovaTree(object):
 
         return subtree_active_features
 
-    def _compute_features_split_values(self) -> List[numpy.ndarray]:
-        all_split_values = [set() for _ in range(self._n_features)]  # type: List[Set[float]]
+    @property
+    def _n_features(self) -> int:
+        return len(self._search_spaces)
 
-        for node_index in range(self._n_nodes):
-            if self._is_node_leaf(node_index):
-                continue
+    @property
+    def _n_nodes(self) -> int:
+        return self._tree.node_count
 
-            raw_feature = self._get_node_split_raw_feature(node_index)
-            assert raw_feature is not None
-            feature = self._get_feature(raw_feature)
+    def _is_node_leaf(self, node_index: int) -> bool:
+        return self._get_node_split_raw_feature(node_index) is None
 
-            if self._is_categorical(feature):
-                if len(all_split_values[feature]) == 0:
-                    n_choices = int(self._search_spaces[feature, 1])
-                    all_split_values[feature].update(range(n_choices))
-            else:
-                threshold = self._get_node_split_threshold(node_index)
-                all_split_values[feature].add(threshold)
+    def _get_node_left_child(self, node_index: int) -> int:
+        return self._tree.children_left[node_index]
 
-        for i in range(len(all_split_values)):
-            split_values = all_split_values[i]
-            split_values = numpy.array(list(split_values), dtype=numpy.float64)
-            # TODO(hvy): Do not shadow variable.
-            assert isinstance(
-                split_values, numpy.ndarray
-            )  # Required for mypy since variable name is reused.
-            split_values.sort()
-            all_split_values[i] = split_values
+    def _get_node_right_child(self, node_index: int) -> int:
+        return self._tree.children_right[node_index]
 
-        return all_split_values
+    def _get_node_value(self, node_index: int) -> float:
+        return self._tree.value[node_index]
 
-    def _compute_child_subspaces(
-        self, node_index: int, subspace: numpy.ndarray
-    ) -> Tuple[numpy.ndarray, numpy.ndarray]:
-        left_subspace = numpy.copy(subspace)
-        right_subspace = numpy.copy(subspace)
+    def _get_node_split_threshold(self, node_index: int) -> float:
+        return self._tree.threshold[node_index]
 
-        raw_feature = self._get_node_split_raw_feature(node_index)
-        assert raw_feature is not None
-        feature = self._get_feature(raw_feature)
+    def _get_node_split_raw_feature(self, node_index: int) -> Optional[int]:
+        raw_feature = self._tree.feature[node_index]
+        return None if raw_feature < 0 else raw_feature
 
-        if self._is_categorical(feature):
-            n_choices = subspace[feature, 1]
-            n_choices -= 1
-            left_subspace[feature, 1] = n_choices
-            right_subspace[feature, 1] = n_choices
-        else:
-            threshold = self._get_node_split_threshold(node_index)
-            left_subspace[feature, 1] = threshold
-            right_subspace[feature, 0] = threshold
+    def _get_node_children(self, node_index: int) -> Tuple[int, int]:
+        return self._get_node_left_child(node_index), self._get_node_right_child(node_index)
 
-        # Sanity check.
-        subspace_cardinality = _get_subspace_cardinality(subspace)
-        left_subspace_cardinality = _get_subspace_cardinality(left_subspace)
-        right_subspace_cardinality = _get_subspace_cardinality(right_subspace)
-        assert left_subspace_cardinality < subspace_cardinality
-        assert right_subspace_cardinality < subspace_cardinality
+    def _is_categorical(self, feature: int) -> bool:
+        return self._search_spaces_is_categorical[feature]
 
-        return left_subspace, right_subspace
+    def _get_feature(self, raw_feature: int) -> int:
+        # Convert one-hot encoded feature index to original feature index.
+        return self._raw_features_to_features[raw_feature]
 
 
 def _get_subspace_cardinality(search_spaces: numpy.ndarray) -> float:

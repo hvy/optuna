@@ -21,6 +21,8 @@ except ImportError as e:
 
 
 class _Fanova(object):
+    # Implements the fANOVA algorithm in https://github.com/automl/fanova using scikit-learn.
+
     def __init__(
         self,
         n_estimators: int,
@@ -49,6 +51,12 @@ class _Fanova(object):
         search_spaces: numpy.ndarray,
         search_spaces_is_categorical: List[bool],
     ) -> None:
+        # Many (deep) copies of the search spaces are required during the tree traversal and using
+        # Optuna distributions will create a bottleneck.
+        # Therefore, search spaces (parameter distributions) are represented by a single
+        # `numpy.ndarray`, coupled with a list of flags that indicate whether they are categorical
+        # or not.
+
         if X.shape[0] != y.shape[0]:
             raise ValueError(
                 "Parameter data length does not match value data length. {} != {}.".format(
@@ -72,6 +80,8 @@ class _Fanova(object):
                 "{} != {}.".format(len(search_spaces_is_categorical), search_spaces.shape[0])
             )
 
+        # Since categorical parameters are not supported by `RandomForestRegressor` we encode them
+        # as one-hot vectors and fit the forest as usual.
         encoder = _CategoricalFeaturesOneHotEncoder(search_spaces_is_categorical)
         X = encoder.fit_transform(X)
         self._forest.fit(X, y)
