@@ -38,9 +38,9 @@ class _Fanova(object):
             min_samples_leaf=min_samples_leaf,
             random_state=random_state,
         )
-        self._trees = None
-        self._V_U_total = None
-        self._V_U_individual = None
+        self._trees = None  # type: Optional[List[_FanovaTree]]
+        self._V_U_total = None  # type: Optional[Dict[Tuple[int, ...], numpy.ndarray]]
+        self._V_U_individual = None  # type: Optional[Dict[Tuple[int, ...], numpy.ndarray]]
 
     def fit(
         self,
@@ -98,9 +98,16 @@ class _Fanova(object):
     def quantify_importance(
         self, features: Tuple[int, ...]
     ) -> Dict[Tuple[int, ...], Dict[str, float]]:
+
+        if self._trees is None:
+            raise RuntimeError("`Fanova.fit` is not called.")
+
+        assert self._V_U_total is not None
+        assert self._V_U_individual is not None
+
         self._compute_marginals(features)
 
-        importance_dict = {}
+        importance_dict = {}  # type: Dict[Tuple[int, ...], Dict[str, float]]
 
         for k in range(1, len(features) + 1):
             for sub_features in itertools.combinations(features, k):
@@ -131,7 +138,9 @@ class _Fanova(object):
         return importance_dict
 
     def _compute_marginals(self, features: Tuple[int, ...]) -> None:
-        assert isinstance(features, tuple)
+        assert self._trees is not None
+        assert self._V_U_total is not None
+        assert self._V_U_individual is not None
 
         if features in self._V_U_individual:
             return
