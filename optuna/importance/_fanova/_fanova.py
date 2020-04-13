@@ -108,10 +108,8 @@ class _Fanova(object):
     def quantify_importance(
         self, features: Tuple[int, ...]
     ) -> Dict[Tuple[int, ...], Dict[str, float]]:
-
         if self._trees is None:
-            raise RuntimeError("`Fanova.fit` is not called.")
-
+            raise RuntimeError("`fit` must be called before quantifying importances.")
         assert self._V_U_total is not None
         assert self._V_U_individual is not None
 
@@ -237,9 +235,7 @@ class _CategoricalFeaturesOneHotEncoder(object):
         return X
 
 
-def _check_sklearn_availability():
-    # type: () -> None
-
+def _check_sklearn_availability() -> None:
     if not _available:
         raise ImportError(
             "scikit-learn is not available. Please install scikit-learn to "
