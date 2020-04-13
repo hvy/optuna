@@ -5,7 +5,7 @@ from typing import Set
 from typing import Tuple
 
 import numpy
-import sklearn
+import sklearn.tree
 
 from optuna.importance._fanova._stats import _WeightedRunningStats
 
