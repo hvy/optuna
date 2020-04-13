@@ -1,15 +1,23 @@
 import itertools
+from typing import List
+from typing import Optional
+from typing import Set
 from typing import Tuple
 
 import numpy
+import sklearn
 
 from optuna.importance._fanova._stats import _WeightedRunningStats
 
 
 class _FanovaTree(object):
     def __init__(
-        self, tree, search_spaces, search_spaces_is_categorical, raw_features_to_features,
-    ):
+        self,
+        tree: sklearn.tree._tree.Tree,
+        search_spaces: numpy.ndarray,
+        search_spaces_is_categorical: List[bool],
+        raw_features_to_features: List[int],
+    ) -> None:
         assert len(search_spaces) == len(search_spaces_is_categorical)
         assert len(search_spaces) - 1 == max(raw_features_to_features)
 
@@ -58,7 +66,9 @@ class _FanovaTree(object):
 
         return stat
 
-    def _precompute_split_midpoints_and_sizes(self):
+    def _precompute_split_midpoints_and_sizes(
+        self,
+    ) -> Tuple[List[numpy.ndarray], List[numpy.ndarray]]:
         midpoints = []
         sizes = []
 
@@ -92,7 +102,9 @@ class _FanovaTree(object):
 
         return midpoints, sizes
 
-    def _marginalized_prediction_stat(self, feature_vector):
+    def _marginalized_prediction_stat(
+        self, feature_vector: numpy.ndarray
+    ) -> _WeightedRunningStats:
         assert len(feature_vector) == self._n_features
 
         search_spaces = numpy.copy(self._search_spaces)
@@ -156,43 +168,43 @@ class _FanovaTree(object):
         return stat
 
     @property
-    def _n_features(self):
+    def _n_features(self) -> int:
         return len(self._search_spaces)
 
     @property
-    def _n_nodes(self):
+    def _n_nodes(self) -> int:
         return self._tree.node_count
 
-    def _is_node_leaf(self, node_index):
+    def _is_node_leaf(self, node_index: int) -> bool:
         return self._get_node_split_raw_feature(node_index) is None
 
-    def _get_node_left_child(self, node_index):
+    def _get_node_left_child(self, node_index: int) -> int:
         return self._tree.children_left[node_index]
 
-    def _get_node_right_child(self, node_index):
+    def _get_node_right_child(self, node_index: int) -> int:
         return self._tree.children_right[node_index]
 
-    def _get_node_value(self, node_index):
+    def _get_node_value(self, node_index: int) -> float:
         return self._tree.value[node_index]
 
-    def _get_node_split_threshold(self, node_index):
+    def _get_node_split_threshold(self, node_index: int) -> float:
         return self._tree.threshold[node_index]
 
-    def _get_node_split_raw_feature(self, node_index):
+    def _get_node_split_raw_feature(self, node_index: int) -> Optional[int]:
         raw_feature = self._tree.feature[node_index]
         return None if raw_feature < 0 else raw_feature
 
-    def _get_node_children(self, node_index):
+    def _get_node_children(self, node_index: int) -> Tuple[int, int]:
         return self._get_node_left_child(node_index), self._get_node_right_child(node_index)
 
-    def _is_categorical(self, feature):
+    def _is_categorical(self, feature: int) -> bool:
         return self._search_spaces_is_categorical[feature]
 
-    def _get_feature(self, raw_feature):
+    def _get_feature(self, raw_feature: int) -> int:
         # Convert one-hot encoded feature index to original feature index.
         return self._raw_features_to_features[raw_feature]
 
-    def _precompute_marginal_prediction_stats(self):
+    def _precompute_marginal_prediction_stats(self) -> List[_WeightedRunningStats]:
         n_nodes = self._n_nodes
 
         marginal_prediction_stats = [_WeightedRunningStats() for _ in range(n_nodes)]
@@ -227,18 +239,19 @@ class _FanovaTree(object):
 
         return marginal_prediction_stats
 
-    def _precompute_subtree_active_features(self):
+    def _precompute_subtree_active_features(self) -> List[Set[int]]:
         # Precompute for each node, a set of active features in the subtree starting from that
         # node.
         n_nodes = self._n_nodes
 
-        subtree_active_features = [set() for _ in range(n_nodes)]
+        subtree_active_features = [set() for _ in range(n_nodes)]  # type: List[Set[int]]
 
         for node_index in reversed(range(n_nodes)):
             if self._is_node_leaf(node_index):
                 continue
 
             raw_feature = self._get_node_split_raw_feature(node_index)
+            assert raw_feature is not None
             feature = self._get_feature(raw_feature)
 
             subtree_active_features[node_index].add(feature)
@@ -250,14 +263,15 @@ class _FanovaTree(object):
 
         return subtree_active_features
 
-    def _compute_features_split_values(self):
-        all_split_values = [set() for _ in range(self._n_features)]
+    def _compute_features_split_values(self) -> List[numpy.ndarray]:
+        all_split_values = [set() for _ in range(self._n_features)]  # type: List[Set[float]]
 
         for node_index in range(self._n_nodes):
             if self._is_node_leaf(node_index):
                 continue
 
             raw_feature = self._get_node_split_raw_feature(node_index)
+            assert raw_feature is not None
             feature = self._get_feature(raw_feature)
 
             if self._is_categorical(feature):
@@ -271,16 +285,23 @@ class _FanovaTree(object):
         for i in range(len(all_split_values)):
             split_values = all_split_values[i]
             split_values = numpy.array(list(split_values), dtype=numpy.float64)
+            # TODO(hvy): Do not shadow variable.
+            assert isinstance(
+                split_values, numpy.ndarray
+            )  # Required for mypy since variable name is reused.
             split_values.sort()
             all_split_values[i] = split_values
 
         return all_split_values
 
-    def _compute_child_subspaces(self, node_index, subspace):
+    def _compute_child_subspaces(
+        self, node_index: int, subspace: numpy.ndarray
+    ) -> Tuple[numpy.ndarray, numpy.ndarray]:
         left_subspace = numpy.copy(subspace)
         right_subspace = numpy.copy(subspace)
 
         raw_feature = self._get_node_split_raw_feature(node_index)
+        assert raw_feature is not None
         feature = self._get_feature(raw_feature)
 
         if self._is_categorical(feature):
@@ -303,5 +324,5 @@ class _FanovaTree(object):
         return left_subspace, right_subspace
 
 
-def _get_subspace_cardinality(search_spaces):
+def _get_subspace_cardinality(search_spaces: numpy.ndarray) -> float:
     return numpy.prod(search_spaces[:, 1] - search_spaces[:, 0])
