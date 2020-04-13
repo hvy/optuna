@@ -1,6 +1,7 @@
 import itertools
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Tuple
 from typing import Union
 
@@ -24,9 +25,9 @@ class _Fanova(object):
         self,
         n_estimators: int,
         max_depth: int,
-        min_samples_split: Union[int, float] = 2,
-        min_samples_leaf: Union[int, float] = 1,
-        random_state: int = None,
+        min_samples_split: Union[int, float],
+        min_samples_leaf: Union[int, float],
+        random_state: Optional[int],
     ) -> None:
         _check_sklearn_availability()
 

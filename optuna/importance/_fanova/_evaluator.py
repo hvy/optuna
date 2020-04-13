@@ -32,10 +32,14 @@ class FanovaImportanceEvaluator(BaseImportanceEvaluator):
     """
 
     def __init__(
-        self, n_estimators: int = 16, max_depth: int = 64, random_state: int = 1024
+        self, n_estimators: int = 16, max_depth: int = 64, random_state: Optional[int] = None
     ) -> None:
         self._evaluator = _Fanova(
-            n_estimators=n_estimators, max_depth=max_depth, random_state=random_state,
+            n_estimators=n_estimators,
+            max_depth=max_depth,
+            min_samples_split=2,
+            min_samples_leaf=1,
+            random_state=random_state,
         )
 
     def evaluate(self, study: Study, params: Optional[List[str]]) -> Dict[str, float]:
