@@ -50,6 +50,9 @@ class FanovaImportanceEvaluator(BaseImportanceEvaluator):
         distributions = _get_distributions(study, params)
         params_data, values_data = _get_study_data(study, distributions)
 
+        if params_data.size == 0:  # `params` were given but as an empty list.
+            return OrderedDict()
+
         search_spaces = numpy.empty((len(distributions), 2), dtype=numpy.float64)
         search_spaces_is_categorical = []
 
