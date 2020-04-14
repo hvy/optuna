@@ -9,6 +9,7 @@ import joblib
 from joblib import delayed
 from joblib import Parallel
 
+import optuna
 from optuna._experimental import experimental
 from optuna._study_direction import StudyDirection
 from optuna._study_summary import StudySummary  # NOQA
