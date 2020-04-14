@@ -108,9 +108,9 @@ class FanovaImportanceEvaluator(BaseImportanceEvaluator):
             individual_importance = importance[(i,)]["individual importance"]
             individual_importances[name] = individual_importance
 
-        tot_importance = sum(v for v in individual_importances.values())
+        total_importance = sum(v for v in individual_importances.values())
         for name in individual_importances.keys():
-            individual_importances[name] /= tot_importance
+            individual_importances[name] /= total_importance
 
         param_importances = OrderedDict(
             reversed(
