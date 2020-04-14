@@ -29,8 +29,6 @@ class FanovaImportanceEvaluator(BaseImportanceEvaluator):
     Given a study, fANOVA fits a random forest regression model that predicts the objective value
     given a parameter configuration. The more accurate this model is, the more reliable the
     importances assessed by this class are.
-    It is recommended that trials are not skewed, that is, preferably belonging to a study that was
-    optimized using the :class:`~optuna.samplers.RandomSampler`.
 
     .. note::
 
