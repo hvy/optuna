@@ -39,12 +39,14 @@ class FanovaImportanceEvaluator(BaseImportanceEvaluator):
         Pairwise and higher order importances are not supported through this class. They can be
         computed using :class:`~optuna.importance._fanova._fanova._Fanova` directly but is not
         recommended as interfaces may change without prior notice.
+
     .. note::
-        
-        The performance of fANOVA depends on the prediction performance of the underlying 
-        random forest model. In order to obtain high prediction performance, it is necessary to 
-        cover a wide range of the hyperparameter search space. It is recommended to use an 
+
+        The performance of fANOVA depends on the prediction performance of the underlying
+        random forest model. In order to obtain high prediction performance, it is necessary to
+        cover a wide range of the hyperparameter search space. It is recommended to use an
         exploration-oriented sampler such as :class:`~optuna.samplers.RandomSampler`.
+
     Args:
         n_estimators:
             The number of trees in the forest.
