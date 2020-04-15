@@ -75,9 +75,7 @@ class _WeightedRunningStats(object):
         self.sdm += delta * weight * (x - self.avg)
 
     def mean(self) -> float:
-        if self.weight_stat.sum() > 0.0:
-            return self.avg
-        return float("nan")
+        return self.avg if self.weight_stat.sum() > 0.0 else float("nan")
 
     def multiply_weights_by(self, a: float) -> "_WeightedRunningStats":
         return _WeightedRunningStats(self.avg, a * self.sdm, self.weight_stat * a)
