@@ -59,7 +59,7 @@ class _FanovaTree(object):
         # For each midpoint along the given dimensions, traverse this tree to compute the
         # marginal predictions.
         sample = numpy.full(self._n_features, numpy.nan, dtype=numpy.float64)
-        for i, (midpoints, sizes) in enumerate(zip(prod_midpoints, prod_sizes)):
+        for midpoints, sizes in zip(prod_midpoints, prod_sizes):
             sample[list(features)] = numpy.array(midpoints, dtype=numpy.float64)
             marginal_prediction_stat = self._marginalized_prediction_stat(sample)
             mean = marginal_prediction_stat.mean()
