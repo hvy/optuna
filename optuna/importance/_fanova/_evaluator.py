@@ -76,13 +76,18 @@ class FanovaImportanceEvaluator(BaseImportanceEvaluator):
         if params_data.size == 0:  # `params` were given but as an empty list.
             return OrderedDict()
 
+        # Many (deep) copies of the search spaces are required during the tree traversal and using
+        # Optuna distributions will create a bottleneck.
+        # Therefore, search spaces (parameter distributions) are represented by a single
+        # `numpy.ndarray`, coupled with a list of flags that indicate whether they are categorical
+        # or not.
         search_spaces = numpy.empty((len(distributions), 2), dtype=numpy.float64)
         search_spaces_is_categorical = []
 
         for i, distribution in enumerate(distributions.values()):
             if isinstance(distribution, CategoricalDistribution):
                 search_spaces[i, 0] = 0
-                search_spaces[i, 1] = float(len(distribution.choices))
+                search_spaces[i, 1] = len(distribution.choices)
                 search_spaces_is_categorical.append(True)
             elif isinstance(
                 distribution,

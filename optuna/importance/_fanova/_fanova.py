@@ -43,6 +43,7 @@ class _Fanova(object):
         self._trees = None  # type: Optional[List[_FanovaTree]]
         self._V_U_total = None  # type: Optional[Dict[Tuple[int, ...], numpy.ndarray]]
         self._V_U_individual = None  # type: Optional[Dict[Tuple[int, ...], numpy.ndarray]]
+        self._features_to_raw_features = None  # type: Optional[List[numpy.ndarray]]
 
     def fit(
         self,
@@ -51,67 +52,32 @@ class _Fanova(object):
         search_spaces: numpy.ndarray,
         search_spaces_is_categorical: List[bool],
     ) -> None:
-        # Many (deep) copies of the search spaces are required during the tree traversal and using
-        # Optuna distributions will create a bottleneck.
-        # Therefore, search spaces (parameter distributions) are represented by a single
-        # `numpy.ndarray`, coupled with a list of flags that indicate whether they are categorical
-        # or not.
+        assert X.shape[0] == y.shape[0]
+        assert X.shape[1] == search_spaces.shape[0]
+        assert X.shape[1] == len(search_spaces_is_categorical)
+        assert search_spaces.shape[1] == 2
 
-        if X.shape[0] != y.shape[0]:
-            raise ValueError(
-                "Parameter data length does not match value data length. {} != {}.".format(
-                    X.shape[0], y.shape[0]
-                )
-            )
-        if X.shape[1] != search_spaces.shape[0]:
-            raise ValueError(
-                "Parameter data width does not match the search space length. "
-                "{} != {}.".format(X.shape[1], search_spaces.shape[0])
-            )
-        if search_spaces.shape[1] != 2:
-            raise ValueError(
-                "Each search space must be represented by a lower and upper bound. Categorical "
-                "must be represented with a 0 followed by the number of choices. "
-                "{} != 2 (expected).".format(search_spaces.shape[1])
-            )
-        if len(search_spaces_is_categorical) != search_spaces.shape[0]:
-            raise ValueError(
-                "Number of categorical flags does not match the search space length. "
-                "{} != {}.".format(len(search_spaces_is_categorical), search_spaces.shape[0])
-            )
+        encoder = _CategoricalFeaturesOneHotEncoder()
+        X, search_spaces = encoder.fit_transform(X, search_spaces, search_spaces_is_categorical)
 
-        # Since categorical parameters are not supported by `RandomForestRegressor` we encode them
-        # as one-hot vectors and fit the forest as usual.
-        encoder = _CategoricalFeaturesOneHotEncoder(search_spaces_is_categorical)
-        X = encoder.fit_transform(X)
         self._forest.fit(X, y)
 
-        trees = [
-            _FanovaTree(
-                estimator.tree_,
-                search_spaces,
-                search_spaces_is_categorical,
-                encoder.raw_features_to_features,
-            )
-            for estimator in self._forest.estimators_
-        ]
-
-        # If all trees have 0 variance, we cannot assess any importances.
-        # This could occur if for instance `X.shape[0] == 1`.
-        if all(tree.variance == 0 for tree in trees):
-            raise RuntimeError("Encountered zero total variance in all trees.")
-
-        self._trees = trees
+        self._trees = [_FanovaTree(e.tree_, search_spaces) for e in self._forest.estimators_]
         self._V_U_total = {}
         self._V_U_individual = {}
+        self._features_to_raw_features = encoder.features_to_raw_features
 
     def quantify_importance(
         self, features: Tuple[int, ...]
     ) -> Dict[Tuple[int, ...], Dict[str, float]]:
-        if self._trees is None:
-            raise RuntimeError("`fit` must be called before quantifying importances.")
+        assert self._trees is not None
         assert self._V_U_total is not None
         assert self._V_U_individual is not None
+
+        if all(tree.variance == 0 for tree in self._trees):
+            # If all trees have 0 variance, we cannot assess any importances.
+            # This could occur if for instance `X.shape[0] == 1`.
+            raise RuntimeError("Encountered zero total variance in all trees.")
 
         self._compute_marginals(features)
 
@@ -149,6 +115,7 @@ class _Fanova(object):
         assert self._trees is not None
         assert self._V_U_total is not None
         assert self._V_U_individual is not None
+        assert self._features_to_raw_features is not None
 
         if features in self._V_U_individual:
             return
@@ -158,12 +125,14 @@ class _Fanova(object):
                 if sub_features not in self._V_U_total:
                     self._compute_marginals(sub_features)
 
-        n_trees = self._forest.n_estimators
+        n_trees = len(self._trees)
         self._V_U_individual[features] = numpy.empty(n_trees, dtype=numpy.float64)
         self._V_U_total[features] = numpy.empty(n_trees, dtype=numpy.float64)
 
+        raw_features = numpy.concatenate([self._features_to_raw_features[f] for f in features])
+
         for tree_index, tree in enumerate(self._trees):
-            stat = tree.marginalized_prediction_stat_for_features(features)
+            stat = tree.marginalized_prediction_stat_for_features(raw_features)
 
             if stat.sum_of_weights() > 0:
                 variance_population = stat.variance_population()
@@ -183,33 +152,47 @@ class _Fanova(object):
 
 
 class _CategoricalFeaturesOneHotEncoder(object):
-    def __init__(self, is_categorical: List[bool]) -> None:
-        self._is_categorical = is_categorical
+    def __init__(self) -> None:
+        # `features_to_raw_features["column index in original matrix"]
+        #     == "numpy.ndarray with corresponding columns in the transformed matrix"`
+        self.features_to_raw_features = None  # type: Optional[List[numpy.ndarray]]
 
-    @property
-    def n_features(self) -> int:
-        return len(self._is_categorical)
-
-    def fit_transform(self, X: numpy.ndarray) -> numpy.ndarray:
+    def fit_transform(
+        self,
+        X: numpy.ndarray,
+        search_spaces: numpy.ndarray,
+        search_spaces_is_categorical: List[bool],
+    ) -> Tuple[numpy.ndarray, numpy.ndarray]:
         # Transform the `X` matrix by expanding categorical integer-valued columns to one-hot
-        # encoding matrices. Note that the resulting matrix is sparse and potentially very big.
+        # encoding matrices and search spaces `search_spaces` similarly.
+        # Note that the resulting matrices are sparse and potentially very big.
 
-        if X.shape[1] != self.n_features:
-            raise ValueError("Number of columns do not match.")
+        n_features = X.shape[1]
+        assert n_features == len(search_spaces)
+        assert n_features == len(search_spaces_is_categorical)
 
-        numerical_features = []
+        categories = []
         categorical_features = []
         categorical_features_n_uniques = {}
+        numerical_features = []
 
-        for i, is_categ in enumerate(self._is_categorical):
-            if is_categ:
-                categorical_features_n_uniques[i] = numpy.unique(X[:, i]).size
-                categorical_features.append(i)
+        for feature, is_categorical in enumerate(search_spaces_is_categorical):
+            if is_categorical:
+                n_unique = search_spaces[feature][1].astype(numpy.int32)
+                categories.append(numpy.arange(n_unique))
+                categorical_features.append(feature)
+                categorical_features_n_uniques[feature] = n_unique
             else:
-                numerical_features.append(i)
+                numerical_features.append(feature)
 
         transformer = ColumnTransformer(
-            [("_categorical", OneHotEncoder(sparse=False), categorical_features)],
+            [
+                (
+                    "_categorical",
+                    OneHotEncoder(categories=categories, sparse=False),
+                    categorical_features,
+                )
+            ],
             remainder="passthrough",
         )
 
@@ -217,8 +200,31 @@ class _CategoricalFeaturesOneHotEncoder(object):
         # `ColumnTransformer.fit_transform`.
         X = transformer.fit_transform(X)
 
+        features_to_raw_features = [None for _ in range(n_features)]  # type: List[numpy.ndarray]
+        i = 0
+        if len(categorical_features) > 0:
+            categories = transformer.transformers_[0][1].categories_
+            assert len(categories) == len(categorical_features)
+
+            for j, (feature, category) in enumerate(zip(categorical_features, categories)):
+                categorical_raw_features = category.astype(numpy.int32)
+                if i > 0:
+                    # Adjust offset.
+                    previous_categorical_feature = categorical_features[j - 1]
+                    previous_categorical_raw_features = features_to_raw_features[
+                        previous_categorical_feature
+                    ]
+                    categorical_raw_features += previous_categorical_raw_features[-1] + 1
+                assert features_to_raw_features[feature] is None
+                features_to_raw_features[feature] = categorical_raw_features
+                i = categorical_raw_features[-1] + 1
+        for feature in numerical_features:
+            features_to_raw_features[feature] = numpy.atleast_1d(i)
+            i += 1
+        assert i == X.shape[1]
+
         # `raw_features_to_features["column index in transformed matrix"]
-        #     == "column index in original matrix"`
+        #     == "column in the original matrix"`
         raw_features_to_features = numpy.empty((X.shape[1],), dtype=numpy.int32)
         i = 0
         for categorical_feature in categorical_features:
@@ -228,11 +234,21 @@ class _CategoricalFeaturesOneHotEncoder(object):
         for numerical_col in numerical_features:
             raw_features_to_features[i] = numerical_col
             i += 1
-        assert i == raw_features_to_features.size
+        assert i == X.shape[1]
 
-        self.raw_features_to_features = raw_features_to_features
+        # Transform search spaces.
+        n_raw_features = raw_features_to_features.size
+        raw_search_spaces = numpy.empty((n_raw_features, 2), dtype=numpy.float64)
 
-        return X
+        for raw_feature, feature in enumerate(raw_features_to_features):
+            if search_spaces_is_categorical[feature]:
+                raw_search_spaces[raw_feature] = [0.0, 1.0]
+            else:
+                raw_search_spaces[raw_feature] = search_spaces[feature]
+
+        self.features_to_raw_features = features_to_raw_features
+
+        return X, raw_search_spaces
 
 
 def _check_sklearn_availability() -> None:
