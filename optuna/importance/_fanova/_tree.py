@@ -36,6 +36,8 @@ class _FanovaTree(object):
     def marginalized_prediction_stat_for_features(
         self, features: numpy.ndarray
     ) -> _WeightedRunningStats:
+        assert features.size > 0
+
         midpoints = [self._split_midpoints[f] for f in features]
         sizes = [self._split_sizes[f] for f in features]
 
