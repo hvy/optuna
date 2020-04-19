@@ -93,11 +93,11 @@ class _Fanova(object):
                     tree_variance = tree.variance
                     if tree_variance == 0:
                         continue
-                    fractions_total.append(
-                        self._V_U_total[sub_features][tree_index] / tree_variance
-                    )
                     fractions_individual.append(
                         self._V_U_individual[sub_features][tree_index] / tree_variance
+                    )
+                    fractions_total.append(
+                        self._V_U_total[sub_features][tree_index] / tree_variance
                     )
                 fractions_individual = numpy.array(fractions_individual, dtype=numpy.float64)
                 fractions_total = numpy.array(fractions_total, dtype=numpy.float64)
