@@ -65,6 +65,7 @@ def get_extras_require() -> Dict[str, List[str]]:
             "catboost",
             "chainer",
             "lightgbm",
+            "llvmlite==0.31.0",
             "mlflow",
             "mpi4py",
             "mxnet",

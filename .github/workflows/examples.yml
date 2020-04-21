@@ -1,8 +1,7 @@
 name: examples
 
-on:
-  schedule:
-    - cron: '0 15 * * *'
+on: [push, pull_request]
+
 
 jobs:
   build:
@@ -10,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.5, 3.6, 3.7, 3.8]
+        python-version: [3.5]
 
     steps:
     - uses: actions/checkout@v2
