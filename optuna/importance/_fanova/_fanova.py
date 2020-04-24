@@ -41,8 +41,8 @@ class _Fanova(object):
             random_state=random_state,
         )
         self._trees = None  # type: Optional[List[_FanovaTree]]
-        self._V_U_total = None  # type: Optional[Dict[Tuple[int, ...], numpy.ndarray]]
-        self._V_U_individual = None  # type: Optional[Dict[Tuple[int, ...], numpy.ndarray]]
+        self._v_u_total = None  # type: Optional[Dict[Tuple[int, ...], numpy.ndarray]]
+        self._v_u_individual = None  # type: Optional[Dict[Tuple[int, ...], numpy.ndarray]]
         self._features_to_raw_features = None  # type: Optional[List[numpy.ndarray]]
 
     def fit(
@@ -63,16 +63,16 @@ class _Fanova(object):
         self._forest.fit(X, y)
 
         self._trees = [_FanovaTree(e.tree_, search_spaces) for e in self._forest.estimators_]
-        self._V_U_total = {}
-        self._V_U_individual = {}
+        self._v_u_total = {}
+        self._v_u_individual = {}
         self._features_to_raw_features = encoder.features_to_raw_features
 
     def quantify_importance(
         self, features: Tuple[int, ...]
     ) -> Dict[Tuple[int, ...], Dict[str, float]]:
         assert self._trees is not None
-        assert self._V_U_total is not None
-        assert self._V_U_individual is not None
+        assert self._v_u_total is not None
+        assert self._v_u_individual is not None
 
         if all(tree.variance == 0 for tree in self._trees):
             # If all trees have 0 variance, we cannot assess any importances.
@@ -94,10 +94,10 @@ class _Fanova(object):
                     if tree_variance == 0:
                         continue
                     fractions_individual.append(
-                        self._V_U_individual[sub_features][tree_index] / tree_variance
+                        self._v_u_individual[sub_features][tree_index] / tree_variance
                     )
                     fractions_total.append(
-                        self._V_U_total[sub_features][tree_index] / tree_variance
+                        self._v_u_total[sub_features][tree_index] / tree_variance
                     )
                 fractions_individual = numpy.array(fractions_individual, dtype=numpy.float64)
                 fractions_total = numpy.array(fractions_total, dtype=numpy.float64)
@@ -113,21 +113,21 @@ class _Fanova(object):
 
     def _compute_marginals(self, features: Tuple[int, ...]) -> None:
         assert self._trees is not None
-        assert self._V_U_total is not None
-        assert self._V_U_individual is not None
+        assert self._v_u_total is not None
+        assert self._v_u_individual is not None
         assert self._features_to_raw_features is not None
 
-        if features in self._V_U_individual:
+        if features in self._v_u_individual:
             return
 
         for k in range(1, len(features)):
             for sub_features in itertools.combinations(features, k):
-                if sub_features not in self._V_U_total:
+                if sub_features not in self._v_u_total:
                     self._compute_marginals(sub_features)
 
         n_trees = len(self._trees)
-        self._V_U_individual[features] = numpy.empty(n_trees, dtype=numpy.float64)
-        self._V_U_total[features] = numpy.empty(n_trees, dtype=numpy.float64)
+        self._v_u_individual[features] = numpy.empty(n_trees, dtype=numpy.float64)
+        self._v_u_total[features] = numpy.empty(n_trees, dtype=numpy.float64)
 
         raw_features = numpy.concatenate([self._features_to_raw_features[f] for f in features])
 
@@ -136,19 +136,19 @@ class _Fanova(object):
 
             if stat.sum_of_weights() > 0:
                 variance_population = stat.variance_population()
-                V_U_total = variance_population
-                V_U_individual = variance_population
+                v_u_total = variance_population
+                v_u_individual = variance_population
 
                 for k in range(1, len(features)):
                     for sub_features in itertools.combinations(features, k):
-                        V_U_individual -= self._V_U_individual[sub_features][tree_index]
-                V_U_individual = numpy.clip(V_U_individual, 0, numpy.inf)
+                        v_u_individual -= self._v_u_individual[sub_features][tree_index]
+                v_u_individual = numpy.clip(v_u_individual, 0, numpy.inf)
             else:
-                V_U_total = numpy.nan
-                V_U_individual = numpy.nan
+                v_u_total = numpy.nan
+                v_u_individual = numpy.nan
 
-            self._V_U_individual[features][tree_index] = V_U_individual
-            self._V_U_total[features][tree_index] = V_U_total
+            self._v_u_individual[features][tree_index] = v_u_individual
+            self._v_u_total[features][tree_index] = v_u_total
 
 
 class _CategoricalFeaturesOneHotEncoder(object):
