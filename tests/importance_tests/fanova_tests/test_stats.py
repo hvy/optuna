@@ -34,7 +34,6 @@ def test_weighted_running_stats() -> None:
     assert stats.sdm == 0.0
     assert math.isnan(stats.mean())
     assert stats.sum_of_weights() == 0.0
-    assert math.isnan(stats.variance_population())
 
     stats.push(2.0, 3.0)
     assert stats.avg == 2.0
@@ -56,8 +55,6 @@ def test_weighted_running_stats() -> None:
     assert stats.mean() == 3.0
     assert stats.sum_of_weights() == 8.0
     assert stats.variance_population() == 3.0
-
-    assert stats.divide_sdm_by(2.0, 0.0) == 12.0
 
     other = _WeightedRunningStats()
     other.push(4.0, 2.0)

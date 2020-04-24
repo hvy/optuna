@@ -2,7 +2,7 @@ class _RunningStats(object):
     def __init__(self, N: int = 0, avg: float = 0.0, sdm: float = 0.0) -> None:
         self.N = N
         self.avg = avg
-        self.sdm = sdm
+        self.sdm = sdm  # Squared distance from the mean.
 
     def __mul__(self, other: float) -> "_RunningStats":
         if not isinstance(other, float):
@@ -84,9 +84,6 @@ class _WeightedRunningStats(object):
         return self.weight_stat.sum()
 
     def variance_population(self) -> float:
-        return self.divide_sdm_by(self.weight_stat.sum(), 0.0)
-
-    def divide_sdm_by(self, fraction: float, min_weight: float) -> float:
-        return (
-            max(0.0, self.sdm / fraction) if self.weight_stat.sum() > min_weight else float("nan")
-        )
+        weight_stat_sum = self.weight_stat.sum()
+        assert weight_stat_sum > 0.0
+        return self.sdm / weight_stat_sum
