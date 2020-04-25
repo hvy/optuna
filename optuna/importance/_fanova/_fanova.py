@@ -1,3 +1,23 @@
+"""An implementation of `An Efficient Approach for Assessing Hyperparameter Importance`.
+
+See http://proceedings.mlr.press/v32/hutter14.pdf.
+
+This implementation is inspired by the efficient algorithm in
+`fanova` (https://github.com/automl/fanova) and
+`pyrfr` (https://github.com/automl/random_forest_run) by the original authors.
+
+Differences include relying on scikit-learn to fit random forests
+(`sklearn.ensemble.RandomForestRegressor`) and that it is otherwise written entirely in Python.
+This stands in contrast to the original implementation which is partially written in C++.
+Since Python runtime overhead may become noticeable, included are instead several
+optimizations, e.g. vectorized NumPy functions to compute the marginals, instead of keeping all
+running statistics. Known cases include assessing higher order importances, e.g. pairwise
+importances, this is due to the fact that the number of partitions to visit grows exponentially,
+or when assessing categorical features with a larger number of choices since each choice is
+given a unique one-hot encoded raw feature.
+
+"""
+
 import itertools
 from typing import Dict
 from typing import List
@@ -21,7 +41,6 @@ except ImportError as e:
 
 
 class _Fanova(object):
-    # Implements the fANOVA algorithm in https://github.com/automl/fanova using scikit-learn.
 
     def __init__(
         self,
@@ -41,8 +60,7 @@ class _Fanova(object):
             random_state=random_state,
         )
         self._trees = None  # type: Optional[List[_FanovaTree]]
-        self._v_u_total = None  # type: Optional[Dict[Tuple[int, ...], numpy.ndarray]]
-        self._v_u_individual = None  # type: Optional[Dict[Tuple[int, ...], numpy.ndarray]]
+        self._variances = None  # type: Optional[Dict[Tuple[int, ...], numpy.ndarray]]
         self._features_to_raw_features = None  # type: Optional[List[numpy.ndarray]]
 
     def fit(
@@ -63,92 +81,62 @@ class _Fanova(object):
         self._forest.fit(X, y)
 
         self._trees = [_FanovaTree(e.tree_, search_spaces) for e in self._forest.estimators_]
-        self._v_u_total = {}
-        self._v_u_individual = {}
         self._features_to_raw_features = encoder.features_to_raw_features
-
-    def quantify_importance(
-        self, features: Tuple[int, ...]
-    ) -> Dict[Tuple[int, ...], Dict[str, float]]:
-        assert self._trees is not None
-        assert self._v_u_total is not None
-        assert self._v_u_individual is not None
+        self._variances = {}
 
         if all(tree.variance == 0 for tree in self._trees):
             # If all trees have 0 variance, we cannot assess any importances.
             # This could occur if for instance `X.shape[0] == 1`.
             raise RuntimeError("Encountered zero total variance in all trees.")
 
-        self._compute_marginals(features)
-
-        importance_dict = {}  # type: Dict[Tuple[int, ...], Dict[str, float]]
-
-        for k in range(1, len(features) + 1):
-            for sub_features in itertools.combinations(features, k):
-                importance_dict[sub_features] = {}
-
-                fractions_total = []
-                fractions_individual = []
-                for tree_index, tree in enumerate(self._trees):
-                    tree_variance = tree.variance
-                    if tree_variance == 0:
-                        continue
-                    fractions_individual.append(
-                        self._v_u_individual[sub_features][tree_index] / tree_variance
-                    )
-                    fractions_total.append(
-                        self._v_u_total[sub_features][tree_index] / tree_variance
-                    )
-                fractions_individual = numpy.array(fractions_individual, dtype=numpy.float64)
-                fractions_total = numpy.array(fractions_total, dtype=numpy.float64)
-
-                importance_dict[sub_features]["individual importance"] = numpy.mean(
-                    fractions_individual
-                )
-                importance_dict[sub_features]["total importance"] = numpy.mean(fractions_total)
-                importance_dict[sub_features]["individual std"] = numpy.std(fractions_individual)
-                importance_dict[sub_features]["total std"] = numpy.std(fractions_total)
-
-        return importance_dict
-
-    def _compute_marginals(self, features: Tuple[int, ...]) -> None:
+    def get_importance(self, features: Tuple[int, ...]) -> Tuple[float, float]:
+        # Assert that `fit` has been called.
         assert self._trees is not None
-        assert self._v_u_total is not None
-        assert self._v_u_individual is not None
+        assert self._variances is not None
+
+        self._compute_variances(features)
+
+        fractions = []  # type: Union[List[float], numpy.ndarray]
+
+        for tree_index, tree in enumerate(self._trees):
+            tree_variance = tree.variance
+            if tree_variance > 0.0:
+                fraction = self._variances[features][tree_index] / tree_variance
+                fractions.append(fraction)
+
+        fractions = numpy.array(fractions)
+
+        return fractions.mean(), fractions.std()
+
+    def _compute_variances(self, features: Tuple[int, ...]) -> None:
+        assert self._trees is not None
+        assert self._variances is not None
         assert self._features_to_raw_features is not None
 
-        if features in self._v_u_individual:
+        if features in self._variances:
             return
 
         for k in range(1, len(features)):
             for sub_features in itertools.combinations(features, k):
-                if sub_features not in self._v_u_total:
-                    self._compute_marginals(sub_features)
-
-        n_trees = len(self._trees)
-        self._v_u_individual[features] = numpy.empty(n_trees, dtype=numpy.float64)
-        self._v_u_total[features] = numpy.empty(n_trees, dtype=numpy.float64)
+                if sub_features not in self._variances:
+                    self._compute_variances(sub_features)
 
         raw_features = numpy.concatenate([self._features_to_raw_features[f] for f in features])
 
+        variances = numpy.empty(len(self._trees), dtype=numpy.float64)
+
         for tree_index, tree in enumerate(self._trees):
-            stat = tree.marginalized_prediction_stat_for_features(raw_features)
+            marginal_variance = tree.get_marginal_variance(raw_features)
 
-            if stat.sum_of_weights() > 0:
-                variance_population = stat.variance_population()
-                v_u_total = variance_population
-                v_u_individual = variance_population
+            # See `fANOVA.__compute_marginals` in
+            # https://github.com/automl/fanova/blob/master/fanova/fanova.py.
+            for k in range(1, len(features)):
+                for sub_features in itertools.combinations(features, k):
+                    marginal_variance -= self._variances[sub_features][tree_index]
 
-                for k in range(1, len(features)):
-                    for sub_features in itertools.combinations(features, k):
-                        v_u_individual -= self._v_u_individual[sub_features][tree_index]
-                v_u_individual = numpy.clip(v_u_individual, 0, numpy.inf)
-            else:
-                v_u_total = numpy.nan
-                v_u_individual = numpy.nan
+            variances[tree_index] = numpy.clip(marginal_variance, 0.0, numpy.inf)
 
-            self._v_u_individual[features][tree_index] = v_u_individual
-            self._v_u_total[features][tree_index] = v_u_total
+        self._variances[features] = variances
 
 
 class _CategoricalFeaturesOneHotEncoder(object):

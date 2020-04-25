@@ -2,10 +2,10 @@ import itertools
 from typing import List
 from typing import Set
 from typing import Tuple
+from typing import Union
 
 import numpy
 
-from optuna.importance._fanova._stats import _WeightedRunningStats
 from optuna import type_checking
 
 if type_checking.TYPE_CHECKING:
@@ -20,56 +20,75 @@ class _FanovaTree(object):
         self._tree = tree
         self._search_spaces = search_spaces
 
-        # To compute marginalized predictions, we will need data points for each leaf partition.
-        # Precompute them once when constructing the tree since they will not change.
-        self._split_midpoints, self._split_sizes = self._precompute_split_midpoints_and_sizes()
+        statistics = self._precompute_statistics()
+        split_midpoints, split_sizes = self._precompute_split_midpoints_and_sizes()
+        subtree_active_features = self._precompute_subtree_active_features()
 
-        self._marginal_prediction_stats = self._precompute_marginal_prediction_stats()
-        self._variance = self._marginal_prediction_stats[0].variance_population()
-
-        self._subtree_active_features = self._precompute_subtree_active_features()
+        self._statistics = statistics
+        self._split_midpoints = split_midpoints
+        self._split_sizes = split_sizes
+        self._subtree_active_features = subtree_active_features
+        self._variance = None  # Computed lazily and requires `self._statistics`.
 
     @property
     def variance(self) -> float:
+        if self._variance is None:
+            leaf_node_indices = numpy.array(
+                [
+                    node_index
+                    for node_index in range(self._n_nodes)
+                    if self._is_node_leaf(node_index)
+                ]
+            )
+            statistics = self._statistics[leaf_node_indices]
+            values = statistics[:, 0]
+            weights = statistics[:, 1]
+            average_values = numpy.average(values, weights=weights)
+            variance = numpy.average((values - average_values) ** 2, weights=weights)
+
+            self._variance = variance
+
+        assert self._variance is not None
         return self._variance
 
-    def marginalized_prediction_stat_for_features(
-        self, features: numpy.ndarray
-    ) -> _WeightedRunningStats:
+    def get_marginal_variance(self, features: numpy.ndarray) -> float:
         assert features.size > 0
-
-        midpoints = [self._split_midpoints[f] for f in features]
-        sizes = [self._split_sizes[f] for f in features]
-
-        stat = _WeightedRunningStats()
 
         # For each midpoint along the given dimensions, traverse this tree to compute the
         # marginal predictions.
-        prod_midpoints = itertools.product(*midpoints)
-        prod_sizes = itertools.product(*sizes)
+        midpoints = [self._split_midpoints[f] for f in features]
+        sizes = [self._split_sizes[f] for f in features]
 
-        sample = numpy.full(self._n_features, numpy.nan, dtype=numpy.float64)
+        product_midpoints = itertools.product(*midpoints)
+        product_sizes = itertools.product(*sizes)
 
-        for midpoints, sizes in zip(prod_midpoints, prod_sizes):
-            sample[features] = numpy.array(midpoints, dtype=numpy.float64)
+        sample = numpy.full(self._n_features, fill_value=numpy.nan, dtype=numpy.float64)
 
-            marginal_prediction_stat = self._marginalized_prediction_stat(sample)
+        values = []  # type: Union[List[float], numpy.ndarray]
+        weights = []  # type: Union[List[float], numpy.ndarray]
 
-            mean = marginal_prediction_stat.mean()
-            assert not numpy.isnan(mean)
+        for midpoints, sizes in zip(product_midpoints, product_sizes):
+            sample[features] = numpy.array(midpoints)
 
-            weight = numpy.prod(numpy.array(sizes) * marginal_prediction_stat.sum_of_weights())
-            stat.push(mean, weight)
+            value, weight = self._get_marginalized_statistics(sample)
+            weight *= numpy.prod(sizes)
 
-        return stat
+            values.append(value)
+            weights.append(weight)
 
-    def _marginalized_prediction_stat(
-        self, feature_vector: numpy.ndarray
-    ) -> _WeightedRunningStats:
+        weights = numpy.array(weights)
+        values = numpy.array(values)
+        average_values = numpy.average(values, weights=weights)
+        variance = numpy.average((values - average_values) ** 2, weights=weights)
+
+        assert variance >= 0.0
+        return variance
+
+    def _get_marginalized_statistics(self, feature_vector: numpy.ndarray) -> Tuple[float, float]:
         assert feature_vector.size == self._n_features
 
         marginalized_features = numpy.isnan(feature_vector)
-        active_features = set(numpy.argwhere(~marginalized_features).ravel())
+        active_features = ~marginalized_features
 
         # Reduce search space cardinalities to 1 for non-active features.
         search_spaces = self._search_spaces.copy()
@@ -79,15 +98,15 @@ class _FanovaTree(object):
         active_nodes = [0]
         active_search_spaces = [search_spaces]
 
-        stat = _WeightedRunningStats()
+        node_indices = []
+        active_features_cardinalities = []
 
         while len(active_nodes) > 0:
             node_index = active_nodes.pop()
             search_spaces = active_search_spaces.pop()
 
-            if not self._is_node_leaf(node_index):
-                feature = self._get_node_split_feature(node_index)
-
+            feature = self._get_node_split_feature(node_index)
+            if feature >= 0:  # Not leaf.
                 # If node splits on an active feature, push the child node that we end up in.
                 response = feature_vector[feature]
                 if not numpy.isnan(response):
@@ -107,22 +126,67 @@ class _FanovaTree(object):
                     continue
 
                 # If subtree starting from node splits on an active feature, push both child nodes.
-                # if active_feature in self._subtree_active_features[node_index]:
-                if (
-                    len(active_features.intersection(self._subtree_active_features[node_index]))
-                    > 0
-                ):
+                if (active_features & self._subtree_active_features[node_index]).any():
                     for child_node_index in self._get_node_children(node_index):
                         active_nodes.append(child_node_index)
                         active_search_spaces.append(search_spaces)
                     continue
 
-            # Here, the node is either a leaf, or the subtree does not split on any active feature
-            # so statistics are collected.
-            correction = 1.0 / _get_cardinality(search_spaces)
-            stat += self._marginal_prediction_stats[node_index].multiply_weights_by(correction)
+            # If node is a leaf or the subtree does not split on any of the active features.
+            node_indices.append(node_index)
+            active_features_cardinalities.append(_get_cardinality(search_spaces))
 
-        return stat
+        node_indices = numpy.array(node_indices, dtype=numpy.int32)
+        active_features_cardinalities = numpy.array(active_features_cardinalities)
+
+        statistics = self._statistics[node_indices]
+        values = statistics[:, 0]
+        weights = statistics[:, 1]
+        weights /= active_features_cardinalities
+
+        value = numpy.average(values, weights=weights)
+        weight = weights.sum()
+
+        return value, weight
+
+    def _precompute_statistics(self) -> numpy.ndarray:
+        n_nodes = self._n_nodes
+
+        # Holds for each node, its weighted average value and the sum of weights.
+        statistics = numpy.empty((n_nodes, 2), dtype=numpy.float64)
+
+        subspaces = [None for _ in range(n_nodes)]
+        subspaces[0] = self._search_spaces
+
+        # Compute marginals for leaf nodes.
+        for node_index in range(n_nodes):
+            subspace = subspaces[node_index]
+
+            if self._is_node_leaf(node_index):
+                value = self._get_node_value(node_index)
+                weight = _get_cardinality(subspace)
+                statistics[node_index] = [value, weight]
+            else:
+                for child_node_index, child_subspace in zip(
+                    self._get_node_children(node_index),
+                    self._get_node_children_subspaces(node_index, subspace),
+                ):
+                    assert subspaces[child_node_index] is None
+                    subspaces[child_node_index] = child_subspace
+
+        # Compute marginals for internal nodes.
+        for node_index in reversed(range(n_nodes)):
+            if not self._is_node_leaf(node_index):
+                child_values = []
+                child_weights = []
+                for child_node_index in self._get_node_children(node_index):
+                    child_values.append(statistics[child_node_index, 0])
+                    child_weights.append(statistics[child_node_index, 1])
+                value = numpy.average(child_values, weights=child_weights)
+                weight = numpy.sum(child_weights)
+                statistics[node_index] = [value, weight]
+
+        return statistics
 
     def _precompute_split_midpoints_and_sizes(
         self,
@@ -142,9 +206,6 @@ class _FanovaTree(object):
             midpoint = 0.5 * (feature_split_values[1:] + feature_split_values[:-1])
             size = feature_split_values[1:] - feature_split_values[:-1]
 
-            assert midpoint.dtype == numpy.float64
-            assert size.dtype == numpy.float64
-
             midpoints.append(midpoint)
             sizes.append(size)
 
@@ -154,8 +215,8 @@ class _FanovaTree(object):
         all_split_values = [set() for _ in range(self._n_features)]  # type: List[Set[float]]
 
         for node_index in range(self._n_nodes):
-            if not self._is_node_leaf(node_index):
-                feature = self._get_node_split_feature(node_index)
+            feature = self._get_node_split_feature(node_index)
+            if feature >= 0:  # Not leaf.
                 threshold = self._get_node_split_threshold(node_index)
                 all_split_values[feature].add(threshold)
 
@@ -168,51 +229,17 @@ class _FanovaTree(object):
 
         return sorted_all_split_values
 
-    def _precompute_marginal_prediction_stats(self) -> List[_WeightedRunningStats]:
-        n_nodes = self._n_nodes
-
-        marginal_prediction_stats = [_WeightedRunningStats() for _ in range(n_nodes)]
-        subspaces = [None for _ in range(n_nodes)]
-        subspaces[0] = self._search_spaces
-
-        # Compute marginals for leaf nodes.
-        for node_index in range(n_nodes):
-            subspace = subspaces[node_index]
-
-            if self._is_node_leaf(node_index):
-                value = self._get_node_value(node_index)
-                subspace_cardinality = _get_cardinality(subspace)
-                marginal_prediction_stats[node_index].push(value, subspace_cardinality)
-            else:
-                for child_node_index, child_subspace in zip(
-                    self._get_node_children(node_index),
-                    self._get_node_children_subspaces(node_index, subspace),
-                ):
-                    assert subspaces[child_node_index] is None
-                    subspaces[child_node_index] = child_subspace
-
-        # Compute marginals for internal nodes.
-        for node_index in reversed(range(n_nodes)):
-            if not self._is_node_leaf(node_index):
-                for child_node_index in self._get_node_children(node_index):
-                    marginal_prediction_stats[node_index] += marginal_prediction_stats[
-                        child_node_index
-                    ]
-
-        return marginal_prediction_stats
-
     def _precompute_subtree_active_features(self) -> List[Set[int]]:
-        # Compute for each node, a set of active features in the subtree starting from that node.
-        subtree_active_features = [set() for _ in range(self._n_nodes)]  # type: List[Set[int]]
+        subtree_active_features = numpy.full((self._n_nodes, self._n_features), fill_value=False)
 
         for node_index in reversed(range(self._n_nodes)):
-            if not self._is_node_leaf(node_index):
-                feature = self._get_node_split_feature(node_index)
-                subtree_active_features[node_index].add(feature)
+            feature = self._get_node_split_feature(node_index)
+            if feature >= 0:  # Not leaf.
+                subtree_active_features[node_index, feature] = True
                 for child_node_index in self._get_node_children(node_index):
-                    subtree_active_features[node_index].update(
-                        subtree_active_features[child_node_index]
-                    )
+                    subtree_active_features[node_index] |= subtree_active_features[
+                        child_node_index
+                    ]
 
         return subtree_active_features
 
@@ -243,9 +270,7 @@ class _FanovaTree(object):
         return self._tree.threshold[node_index]
 
     def _get_node_split_feature(self, node_index: int) -> int:
-        feature = self._tree.feature[node_index]
-        assert feature >= 0  # This method is never called with a leaf `node_index`.
-        return feature
+        return self._tree.feature[node_index]
 
     def _get_node_left_child_subspaces(
         self, node_index: int, search_spaces: numpy.ndarray
@@ -285,8 +310,4 @@ def _get_subspaces(
 ) -> numpy.ndarray:
     search_spaces_subspace = numpy.copy(search_spaces)
     search_spaces_subspace[feature, search_spaces_column] = threshold
-
-    # Sanity check.
-    assert _get_cardinality(search_spaces_subspace) < _get_cardinality(search_spaces)
-
     return search_spaces_subspace

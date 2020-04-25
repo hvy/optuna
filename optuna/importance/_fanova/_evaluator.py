@@ -114,8 +114,7 @@ class FanovaImportanceEvaluator(BaseImportanceEvaluator):
 
         individual_importances = {}
         for i, name in enumerate(distributions.keys()):
-            importance = evaluator.quantify_importance((i,))
-            individual_importance = importance[(i,)]["individual importance"]
+            individual_importance, _ = evaluator.get_importance((i,))
             individual_importances[name] = individual_importance
 
         total_importance = sum(individual_importances.values())
