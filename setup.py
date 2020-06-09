@@ -122,6 +122,20 @@ def get_extras_require() -> Dict[str, List[str]]:
         + (
             ["keras", "tensorflow", "tensorflow-datasets"] if sys.version_info[:2] < (3, 8) else []
         ),
+        "testingnointegration": [
+            # TODO(toshihikoyanase): Remove the version constraint after resolving the issue
+            # https://github.com/optuna/optuna/issues/1000.
+            "bokeh<2.0.0",
+            "cma",
+            "fakeredis",
+            "fanova",
+            "mpi4py",
+            "pandas",
+            "plotly>=4.0.0",
+            "pytest",
+            "scikit-learn>=0.19.0,<0.23.0",
+            "scikit-optimize",
+        ],
     }
 
     return requirements

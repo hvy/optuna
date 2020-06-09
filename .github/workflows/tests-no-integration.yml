@@ -1,4 +1,4 @@
-name: tests
+name: tests-no-integration
 
 on:
   push:
@@ -68,11 +68,11 @@ jobs:
 
     - name: Install test dependencies
       run: |
-        pip install --progress-bar off .[testing] -f https://download.pytorch.org/whl/torch_stable.html
+        pip install --progress-bar off .[testingnointegration] -f https://download.pytorch.org/whl/torch_stable.html
 
     - name: Tests
       run: |
-        pytest tests
+        pytest tests  --ignore tests/integration_tests
 
     - name: Tests MPI
       run: |
