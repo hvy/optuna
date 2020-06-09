@@ -4,7 +4,9 @@ on:
   push:
     branches:
       - master
-  pull_request: {}
+  pull_request:
+    paths:
+    - 'optuna/integration/**'
 
 jobs:
   build:
@@ -24,9 +26,10 @@ jobs:
           --health-retries 5
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v2
 
-    - name: setup-python${{ matrix.python-version }}
+    - name: Setup Python${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
