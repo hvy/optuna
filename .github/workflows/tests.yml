@@ -1,6 +1,10 @@
 name: tests
 
-on: [pull_request]
+on:
+  push:
+    branches:
+      - master
+  pull_request: {}
 
 jobs:
   build:
@@ -17,12 +21,14 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Cache pip
+    - name: Check pip cache
       uses: actions/cache@v2
       with:
         # See https://github.com/actions/cache/blob/master/examples.md#python---pip.
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('./setup.py') }}
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('./setup.py') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('./setup.py') }}
 
     - name: pre-install
       run: |
