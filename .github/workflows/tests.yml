@@ -43,3 +43,7 @@ jobs:
         # Install minimal dependencies and confirm that `import optuna` is successful.
         pip install --progress-bar off $(ls dist/*.tar.gz)
         python -c 'import optuna'
+
+    - name: install-testing
+      run: |
+        pip install --progress-bar off $(ls dist/*.tar.gz)[testing] -f https://download.pytorch.org/whl/torch_stable.html
