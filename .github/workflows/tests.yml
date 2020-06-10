@@ -32,27 +32,38 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Pre-install
+    - name: Setup environment
       run: |
         sudo apt-get update
-        sudo apt-get -y install openmpi-bin libopenmpi-dev
+
+        # Install swig which is required by pyrfr which is required by fanova.
+        wget http://prdownloads.sourceforge.net/swig/swig-3.0.12.tar.gz
+        tar -zxvf swig-3.0.12.tar.gz
+        pushd swig-3.0.12
+        ./configure
+        make
+        sudo make install
+        popd
+        swig -version
 
     - name: Install
       run: |
         python -m pip install --upgrade pip
         pip install --progress-bar off -U setuptools
-        pip install --progress-bar off .
 
+        # Install minimal dependencies and confirm that `import optuna` is successful.
+        pip install --progress-bar off .
         python -c 'import optuna'
         optuna --version
 
         pip install --progress-bar off .[tests]
+        pip install --progress-bar off .[optional]
+
+        # Required for samplers_tests/test_samplers.py.
+        # TODO(hvy): Fix samplers_tests/test_samplers.py to not require optional depenendencies and remove these installs.
+        pip install scikit-optimize
+        pip install cma
 
     - name: Tests
       run: |
-        pytest tests --ignore tests/integration_tests \
-          --ignore tests/samplers_tests/test_samplers.py \
-          --ignore tests/test_cli.py \
-          --ignore tests/test_dashboard.py \
-          --ignore tests/test_importance.py \
-          --ignore tests/visualization_tests
+        pytest tests --ignore tests/integration_tests

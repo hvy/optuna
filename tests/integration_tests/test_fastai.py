@@ -1,7 +1,3 @@
-import pytest
-
-pytest.importorskip("fastai")
-
 from functools import partial
 from typing import Any
 from typing import Tuple

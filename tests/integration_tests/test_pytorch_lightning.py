@@ -1,7 +1,3 @@
-import pytest
-
-pytest.importorskip("pytorch_lightning")
-
 import pytorch_lightning as pl
 import torch
 from torch import nn

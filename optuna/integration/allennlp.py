@@ -5,7 +5,6 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Union
-
 import warnings
 
 import optuna

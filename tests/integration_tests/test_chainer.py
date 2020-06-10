@@ -1,7 +1,3 @@
-import pytest
-
-pytest.importorskip("chainer")
-
 from collections import namedtuple
 import math
 import typing
@@ -12,6 +8,7 @@ import chainer
 import chainer.links as L
 from chainer.training import triggers
 import numpy as np
+import pytest
 
 import optuna
 from optuna.integration.chainer import ChainerPruningExtension

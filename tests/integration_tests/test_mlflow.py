@@ -1,7 +1,3 @@
-import pytest
-
-pytest.importorskip("mlflow")
-
 from mlflow.tracking import MlflowClient
 import py
 

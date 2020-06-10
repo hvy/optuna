@@ -1,7 +1,3 @@
-import pytest
-
-pytest.importorskip("lightgbm")
-
 from optuna.integration.lightgbm_tuner.alias import _handling_alias_metrics
 from optuna.integration.lightgbm_tuner.alias import _handling_alias_parameters
 

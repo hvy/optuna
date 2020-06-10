@@ -1,11 +1,9 @@
-import pytest
-
-pytest.importorskip("sklearn")
-
 from collections import OrderedDict
 import math
 from typing import Callable
 from typing import List
+
+import pytest
 
 import optuna
 from optuna.importance import BaseImportanceEvaluator

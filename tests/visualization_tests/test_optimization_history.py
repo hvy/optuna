@@ -1,7 +1,5 @@
 import pytest
 
-pytest.importorskip("plotly")
-
 from optuna.study import create_study
 from optuna import type_checking
 from optuna.visualization.optimization_history import plot_optimization_history

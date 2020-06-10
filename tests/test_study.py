@@ -10,15 +10,12 @@ import uuid
 import warnings
 
 import joblib
+import pandas as pd
 import pytest
 
 import optuna
-from optuna._imports import try_import
 from optuna.testing.storage import StorageSupplier
 from optuna import type_checking
-
-with try_import() as _pandas_imports:
-    import pandas as pd
 
 if type_checking.TYPE_CHECKING:
     from typing import Any  # NOQA
@@ -477,7 +474,6 @@ def test_study_pickle():
     assert len(study_2.trials) == 20
 
 
-@pytest.mark.skipif(not _pandas_imports.is_successful(), reason="Missing `pandas`.")
 def test_study_trials_dataframe_with_no_trials():
     # type: () -> None
 
@@ -486,7 +482,6 @@ def test_study_trials_dataframe_with_no_trials():
     assert trials_df.empty
 
 
-@pytest.mark.skipif(not _pandas_imports.is_successful(), reason="Missing `pandas`.")
 @pytest.mark.parametrize("storage_mode", STORAGE_MODES)
 @pytest.mark.parametrize(
     "attrs",
@@ -596,7 +591,6 @@ def test_trials_dataframe(storage_mode, attrs, multi_index):
                 assert df.system_attrs_foo[i] == "bar"
 
 
-@pytest.mark.skipif(not _pandas_imports.is_successful(), reason="Missing `pandas`.")
 @pytest.mark.parametrize("storage_mode", STORAGE_MODES)
 def test_trials_dataframe_with_failure(storage_mode):
     # type: (str) -> None

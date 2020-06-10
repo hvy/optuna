@@ -1,12 +1,9 @@
-import pytest
-
-pytest.importorskip("cma")
-
 import math
 from unittest.mock import call
 from unittest.mock import patch
 
 import cma
+import pytest
 
 import optuna
 from optuna.distributions import CategoricalDistribution

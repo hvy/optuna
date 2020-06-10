@@ -1,7 +1,3 @@
-import pytest
-
-pytest.importorskip("plotly")
-
 from optuna.study import create_study
 from optuna.testing.visualization import prepare_study_with_trials
 from optuna import type_checking

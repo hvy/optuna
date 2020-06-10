@@ -1,7 +1,5 @@
 import pytest
 
-pytest.importorskip("plotly")
-
 from optuna.distributions import LogUniformDistribution
 from optuna.study import create_study
 from optuna.study import StudyDirection

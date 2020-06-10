@@ -1,7 +1,3 @@
-import pytest
-
-pytest.importorskip("xgboost")
-
 import numpy as np
 import pytest
 import xgboost as xgb

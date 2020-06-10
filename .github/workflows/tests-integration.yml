@@ -1,4 +1,4 @@
-name: Tests (Optional)
+name: Tests (Integration)
 
 on:
   push:
@@ -14,15 +14,6 @@ jobs:
       matrix:
         python-version: [3.5, 3.6, 3.7, 3.8]
 
-    services:
-      redis:
-        image: redis
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -32,20 +23,10 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Pre-install
+    - name: Setup environment
       run: |
         sudo apt-get update
         sudo apt-get -y install openmpi-bin libopenmpi-dev
-
-        # Install swig which is required by pyrfr which is required by fanova.
-        wget http://prdownloads.sourceforge.net/swig/swig-3.0.12.tar.gz
-        tar -zxvf swig-3.0.12.tar.gz
-        pushd swig-3.0.12
-        ./configure
-        make
-        sudo make install
-        popd
-        swig -version
 
     - name: Install
       run: |
@@ -57,27 +38,18 @@ jobs:
         python -c 'import optuna'
         optuna --version
 
-        pip install --progress-bar off .[testing] -f https://download.pytorch.org/whl/torch_stable.html
+        pip install --progress-bar off .[tests]
+        pip install --progress-bar off .[integration] -f https://download.pytorch.org/whl/torch_stable.html
 
     - name: Tests
       run: |
         if [ ${{ matrix.python-version }} = 3.5 ]; then
           pytest tests/integration_tests \
-            tests/samplers_tests/test_samplers.py \
-            tests/test_cli.py \
-            tests/test_dashboard.py \
-            tests/test_importance.py \
-            tests/visualization_tests \
             --ignore tests/integration_tests/test_pytorch_lightning.py \
             --ignore tests/integration_tests/test_fastai.py \
             --ignore tests/integration_tests/allennlp_tests/test_allennlp.py
         elif [ ${{ matrix.python-version }} = 3.8 ]; then
           pytest tests/integration_tests \
-            tests/samplers_tests/test_samplers.py \
-            tests/test_cli.py \
-            tests/test_dashboard.py \
-            tests/test_importance.py \
-            tests/visualization_tests \
             --ignore tests/integration_tests/test_fastai.py \
             --ignore tests/integration_tests/test_keras.py \
             --ignore tests/integration_tests/test_pytorch_lightning.py \
@@ -85,12 +57,7 @@ jobs:
             --ignore tests/integration_tests/test_tfkeras.py \
             --ignore tests/integration_tests/allennlp_tests/test_allennlp.py
         else
-          pytest tests/integration_tests \
-            tests/samplers_tests/test_samplers.py \
-            tests/test_cli.py \
-            tests/test_dashboard.py \
-            tests/test_importance.py \
-            tests/visualization_tests
+          pytest tests/integration_tests
         fi
 
     - name: Tests MPI

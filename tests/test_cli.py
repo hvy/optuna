@@ -226,8 +226,6 @@ def test_create_study_command_with_skip_if_exists():
 def test_dashboard_command():
     # type: () -> None
 
-    pytest.importorskip("bokeh")
-
     with StorageSupplier("sqlite") as storage, tempfile.NamedTemporaryFile("r") as tf_report:
         assert isinstance(storage, RDBStorage)
         storage_url = str(storage.engine.url)
@@ -256,8 +254,6 @@ def test_dashboard_command():
 )
 def test_dashboard_command_with_allow_websocket_origin(origins):
     # type: (List[str]) -> None
-
-    pytest.importorskip("bokeh")
 
     with StorageSupplier("sqlite") as storage, tempfile.NamedTemporaryFile("r") as tf_report:
         assert isinstance(storage, RDBStorage)
