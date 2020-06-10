@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("mxnet")
+
 import mxnet as mx
 import numpy as np
 import pytest

@@ -1,8 +1,12 @@
+import pytest
+
+pytest.importorskip("skopt")  # TODO(hvy): Only skip necessary tests.
+pytest.importorskip("cma")  # TODO(hvy): Only skip necessary tests.
+
 from collections import OrderedDict
 import pickle
 
 import numpy as np
-import pytest
 
 import optuna
 from optuna.distributions import CategoricalDistribution

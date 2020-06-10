@@ -1,6 +1,9 @@
-from unittest.mock import patch
-
 import pytest
+
+pytest.importorskip("skopt")
+pytest.importorskip("cma")
+
+from unittest.mock import patch
 
 import optuna
 from optuna.integration import CmaEsSampler

@@ -1,6 +1,9 @@
+import pytest
+
+pytest.importorskip("tensorflow")
+
 import numpy as np
 import pkg_resources
-import pytest
 import tensorflow as tf
 
 import optuna

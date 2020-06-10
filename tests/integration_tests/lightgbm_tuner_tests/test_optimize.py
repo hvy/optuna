@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("lightgbm")
+
 import contextlib
 from tempfile import TemporaryDirectory
 from typing import Any
@@ -9,7 +13,6 @@ from unittest import mock
 import warnings
 
 import numpy as np
-import pytest
 
 import optuna
 import optuna.integration.lightgbm as lgb

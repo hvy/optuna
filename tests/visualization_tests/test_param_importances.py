@@ -1,6 +1,9 @@
-import math
-
 import pytest
+
+pytest.importorskip("sklearn")
+pytest.importorskip("plotly")
+
+import math
 
 from optuna.importance import MeanDecreaseImpurityImportanceEvaluator
 from optuna.study import create_study

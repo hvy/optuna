@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("skopt")
+
 from unittest.mock import call
 from unittest.mock import patch
 

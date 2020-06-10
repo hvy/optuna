@@ -1,4 +1,7 @@
 import pytest
+
+pytest.importorskip("sklearn")
+
 from sklearn.datasets import make_blobs
 from sklearn.decomposition import PCA
 from sklearn.exceptions import NotFittedError

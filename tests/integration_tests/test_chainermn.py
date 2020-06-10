@@ -1,6 +1,8 @@
-import gc
-
 import pytest
+
+pytest.importorskip("chainermn")
+
+import gc
 
 from optuna import create_study
 from optuna import distributions

@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("keras")
+
 from keras.layers import Dense
 from keras import Sequential
 import numpy as np

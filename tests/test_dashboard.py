@@ -1,5 +1,7 @@
 import tempfile
 
+import pytest
+
 import optuna
 import optuna.trial
 
@@ -24,6 +26,8 @@ def _create_some_study():
 
 def test_write():
     # type: () -> None
+
+    pytest.importorskip("bokeh")
 
     study = _create_some_study()
 

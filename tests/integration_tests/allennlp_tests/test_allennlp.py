@@ -1,9 +1,12 @@
+import pytest
+
+pytest.importorskip("allennlp")
+
 import json
 import os.path
 import tempfile
 
 import _jsonnet
-import pytest
 
 import optuna
 

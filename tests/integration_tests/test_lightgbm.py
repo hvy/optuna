@@ -1,7 +1,10 @@
+import pytest
+
+pytest.importorskip("lightgbm")
+
 from functools import partial
 
 import lightgbm as lgb
-import pytest
 
 import optuna
 from optuna.integration.lightgbm import LightGBMPruningCallback

@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("tensorflow")
+
 from collections import OrderedDict
 import math
 from unittest.mock import patch
