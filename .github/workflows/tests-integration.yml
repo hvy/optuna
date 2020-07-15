@@ -16,9 +16,6 @@ jobs:
       matrix:
         python-version: [3.5, 3.6, 3.7, 3.8]
 
-    # Not intended for forks.
-    if: github.repository == 'optuna/optuna'
-
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -63,7 +60,7 @@ jobs:
             --ignore tests/integration_tests/test_tfkeras.py \
             --ignore tests/integration_tests/allennlp_tests/test_allennlp.py
         else
-          pytest tests/integration_tests
+          pytest tests/integration_tests --full-trace
         fi
 
     - name: Tests MPI
