@@ -60,7 +60,7 @@ jobs:
             --ignore tests/integration_tests/test_tfkeras.py \
             --ignore tests/integration_tests/allennlp_tests/test_allennlp.py
         else
-          pytest tests/integration_tests
+          pytest tests/integration_tests --full-trace
         fi
 
     - name: Tests MPI
