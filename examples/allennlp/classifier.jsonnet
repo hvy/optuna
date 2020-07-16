@@ -54,7 +54,7 @@ local ENCODER = CNN_FIELDS(
     dropout: DROPOUT,
   },
   data_loader: {
-    batch_size: 64,
+    batch_size: 10,
   },
 
   trainer: {
