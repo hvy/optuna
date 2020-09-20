@@ -159,7 +159,8 @@ class TPESampler(BaseSampler):
         seed: Optional[int] = None,
         *,
         multivariate: bool = False,
-        warn_independent_sampling: bool = True
+        warn_independent_sampling: bool = True,
+        constant_liar_l: Optional[Union[float, str]] = None,
     ) -> None:
 
         self._parzen_estimator_parameters = _ParzenEstimatorParameters(
@@ -184,6 +185,8 @@ class TPESampler(BaseSampler):
                 " The interface can change in the future.",
                 ExperimentalWarning,
             )
+
+        self._constant_liar_l = constant_liar_l
 
     def reseed_rng(self) -> None:
 
@@ -229,7 +232,9 @@ class TPESampler(BaseSampler):
             return {}
 
         param_names = list(search_space.keys())
-        values, scores = _get_multivariate_observation_pairs(study, param_names)
+        values, scores = _get_multivariate_observation_pairs(
+            study, param_names, trial, self._constant_liar_l
+        )
 
         # If the number of samples is insufficient, we run random trial.
         n = len(scores)
@@ -795,12 +800,46 @@ def _get_observation_pairs(
 
 
 def _get_multivariate_observation_pairs(
-    study: Study, param_names: List[str]
+    study: Study,
+    param_names: List[str],
+    this_trial: FrozenTrial,
+    constant_liar_l: Optional[Union[float, str]],
 ) -> Tuple[Dict[str, List[Optional[float]]], List[Tuple[float, float]]]:
 
     sign = 1
     if study.direction == StudyDirection.MAXIMIZE:
         sign = -1
+
+    if isinstance(constant_liar_l, (int, float)):
+        # Be nice, allow ints.
+        constant_liar_l = float(constant_liar_l)
+    elif isinstance(constant_liar_l, str):
+        values = []
+        for trial in study._storage.get_all_trials(study._study_id, deepcopy=False):
+            if trial.state is TrialState.COMPLETE and trial.value is not None:
+                values.append(trial.value)
+
+        n_completed_trials = len(values)
+
+        if constant_liar_l == "dynamic":
+            if n_completed_trials < 100:  # TODO(hvy): Do not fix to 100.
+                constant_liar_l = "max"
+            else:
+                constant_liar_l = "mean"
+
+        if n_completed_trials > 0:  # Length can be 0 for the first batch.
+            if constant_liar_l == "min":
+                constant_liar_l = np.min(values)
+            elif constant_liar_l == "max":
+                constant_liar_l = np.max(values)
+            elif constant_liar_l == "mean":
+                constant_liar_l = np.mean(values)
+
+            assert isinstance(constant_liar_l, float)
+        else:
+            constant_liar_l = None
+    else:
+        assert constant_liar_l is None
 
     scores = []
     values = {
@@ -820,6 +859,12 @@ def _get_multivariate_observation_pairs(
                     score = (-step, sign * intermediate_value)
             else:
                 score = (float("inf"), 0.0)
+        elif (
+            trial.state is TrialState.RUNNING
+            and constant_liar_l is not None
+            and trial.number != this_trial.number
+        ):
+            score = (-float("inf"), sign * constant_liar_l)
         else:
             continue
         scores.append(score)
