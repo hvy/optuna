@@ -268,7 +268,9 @@ def test_suggest_low_equals_high(storage_init_func: Callable[[], storages.BaseSt
     trial = Trial(study, study._storage.create_new_trial(study._study_id))
 
     with patch.object(
-        optuna.distributions, "_get_single_value", wraps=optuna.distributions._get_single_value
+        optuna.core.distributions,
+        "_get_single_value",
+        wraps=optuna.core.distributions._get_single_value,
     ) as mock_object:
         assert trial.suggest_uniform("a", 1.0, 1.0) == 1.0  # Suggesting a param.
         assert mock_object.call_count == 1
