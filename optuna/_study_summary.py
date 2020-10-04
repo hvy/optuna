@@ -3,9 +3,9 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 
+from optuna import core
 from optuna import logging
 from optuna import trial
-from optuna._study_direction import StudyDirection
 
 
 _logger = logging.get_logger(__name__)
@@ -39,7 +39,7 @@ class StudySummary(object):
     def __init__(
         self,
         study_name: str,
-        direction: StudyDirection,
+        direction: core.study.StudyDirection,
         best_trial: Optional[trial.FrozenTrial],
         user_attrs: Dict[str, Any],
         system_attrs: Dict[str, Any],

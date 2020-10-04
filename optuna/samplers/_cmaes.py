@@ -12,8 +12,8 @@ from cmaes import CMA
 import numpy as np
 
 import optuna
+from optuna import core
 from optuna import logging
-from optuna._study_direction import StudyDirection
 from optuna.distributions import BaseDistribution
 from optuna.exceptions import ExperimentalWarning
 from optuna.samplers import BaseSampler
@@ -287,7 +287,7 @@ class CmaEsSampler(BaseSampler):
                     [_to_cma_param(search_space[k], t.params[k]) for k in ordered_keys],
                     dtype=float,
                 )
-                y = t.value if study.direction == StudyDirection.MINIMIZE else -t.value
+                y = t.value if study.direction == core.study.StudyDirection.MINIMIZE else -t.value
                 solutions.append((x, y))
 
             optimizer.tell(solutions)

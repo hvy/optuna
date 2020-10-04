@@ -4,7 +4,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
-from optuna._study_direction import StudyDirection
+from optuna import core
 from optuna._study_summary import StudySummary
 from optuna.distributions import BaseDistribution
 from optuna.trial import FrozenTrial
@@ -162,7 +162,7 @@ class BaseStorage(object, metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def set_study_direction(self, study_id: int, direction: StudyDirection) -> None:
+    def set_study_direction(self, study_id: int, direction: core.study.StudyDirection) -> None:
         """Register an optimization problem direction to a study.
 
         Args:
@@ -235,7 +235,7 @@ class BaseStorage(object, metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_study_direction(self, study_id: int) -> StudyDirection:
+    def get_study_direction(self, study_id: int) -> core.study.StudyDirection:
         """Read whether a study maximizes or minimizes an objective.
 
         Args:
@@ -583,7 +583,7 @@ class BaseStorage(object, metaclass=abc.ABCMeta):
         if len(all_trials) == 0:
             raise ValueError("No trials are completed yet.")
 
-        if self.get_study_direction(study_id) == StudyDirection.MAXIMIZE:
+        if self.get_study_direction(study_id) == core.study.StudyDirection.MAXIMIZE:
             best_trial = max(all_trials, key=lambda t: t.value)
         else:
             best_trial = min(all_trials, key=lambda t: t.value)

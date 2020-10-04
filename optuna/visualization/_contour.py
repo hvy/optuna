@@ -4,7 +4,7 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 
-from optuna._study_direction import StudyDirection
+from optuna import core
 from optuna.logging import get_logger
 from optuna.study import Study
 from optuna.trial import FrozenTrial
@@ -186,7 +186,7 @@ def _generate_contour_subplot(
     trials: List[FrozenTrial],
     x_param: str,
     y_param: str,
-    direction: StudyDirection,
+    direction: core.study.StudyDirection,
     param_values_range: Optional[Dict[str, Tuple[float, float]]] = None,
 ) -> Tuple["Contour", "Scatter"]:
 
@@ -236,7 +236,7 @@ def _generate_contour_subplot(
     # If contours_coloring='heatmap' is specified, reversesecale argument of go.Contour does not
     # work correctly. See https://github.com/pfnet/optuna/issues/606.
     colorscale = plotly.colors.PLOTLY_SCALES["Blues"]
-    if direction == StudyDirection.MINIMIZE:
+    if direction == core.study.StudyDirection.MINIMIZE:
         colorscale = [[1 - t[0], t[1]] for t in colorscale]
         colorscale.reverse()
 

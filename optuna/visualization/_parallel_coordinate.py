@@ -5,7 +5,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
-from optuna._study_direction import StudyDirection
+from optuna import core
 from optuna.logging import get_logger
 from optuna.study import Study
 from optuna.trial import TrialState
@@ -121,7 +121,7 @@ def _get_parallel_coordinate_plot(study: Study, params: Optional[List[str]] = No
                 "colorscale": "blues",
                 "colorbar": {"title": "Objective Value"},
                 "showscale": True,
-                "reversescale": study.direction == StudyDirection.MINIMIZE,
+                "reversescale": study.direction == core.study.StudyDirection.MINIMIZE,
             },
         )
     ]

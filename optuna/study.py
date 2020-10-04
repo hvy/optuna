@@ -19,6 +19,7 @@ import joblib
 from joblib import delayed
 from joblib import Parallel
 
+from optuna import core
 from optuna import exceptions
 from optuna import logging
 from optuna import progress_bar as pbar_module
@@ -28,8 +29,8 @@ from optuna import storages
 from optuna import trial as trial_module
 from optuna._experimental import experimental
 from optuna._imports import try_import
-from optuna._study_direction import StudyDirection
 from optuna._study_summary import StudySummary  # NOQA
+from optuna.core.study import StudyDirection  # NOQA
 from optuna.trial import create_trial
 from optuna.trial import FrozenTrial
 from optuna.trial import TrialState
@@ -84,7 +85,7 @@ class BaseStudy(object):
         return copy.deepcopy(self._storage.get_best_trial(self._study_id))
 
     @property
-    def direction(self) -> StudyDirection:
+    def direction(self) -> core.study.StudyDirection:
         """Return the direction of the study.
 
         Returns:
@@ -964,9 +965,9 @@ def create_study(
     study = Study(study_name=study_name, storage=storage, sampler=sampler, pruner=pruner)
 
     if direction == "minimize":
-        _direction = StudyDirection.MINIMIZE
+        _direction = core.study.StudyDirection.MINIMIZE
     elif direction == "maximize":
-        _direction = StudyDirection.MAXIMIZE
+        _direction = core.study.StudyDirection.MAXIMIZE
     else:
         raise ValueError("Please set either 'minimize' or 'maximize' to direction.")
 

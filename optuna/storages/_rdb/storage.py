@@ -25,9 +25,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql import functions
 
 import optuna
+from optuna import core
 from optuna import distributions
 from optuna import version
-from optuna._study_direction import StudyDirection
 from optuna._study_summary import StudySummary
 from optuna.storages._base import BaseStorage
 from optuna.storages._base import DEFAULT_STUDY_NAME_PREFIX
@@ -152,7 +152,9 @@ class RDBStorage(BaseStorage):
         if study_name is None:
             study_name = self._create_unique_study_name(session)
 
-        study = models.StudyModel(study_name=study_name, direction=StudyDirection.NOT_SET)
+        study = models.StudyModel(
+            study_name=study_name, direction=core.study.StudyDirection.NOT_SET
+        )
         session.add(study)
         if not self._commit_with_integrity_check(session):
             raise optuna.exceptions.DuplicatedStudyError(
@@ -188,13 +190,13 @@ class RDBStorage(BaseStorage):
         return study_name
 
     # TODO(sano): Prevent simultaneously setting different direction in distributed environments.
-    def set_study_direction(self, study_id: int, direction: StudyDirection) -> None:
+    def set_study_direction(self, study_id: int, direction: core.study.StudyDirection) -> None:
 
         session = self.scoped_session()
 
         study = models.StudyModel.find_or_raise_by_id(study_id, session)
 
-        if study.direction != StudyDirection.NOT_SET and study.direction != direction:
+        if study.direction != core.study.StudyDirection.NOT_SET and study.direction != direction:
             raise ValueError(
                 "Cannot overwrite study direction from {} to {}.".format(
                     study.direction, direction
@@ -267,7 +269,7 @@ class RDBStorage(BaseStorage):
 
         return study.study_name
 
-    def get_study_direction(self, study_id: int) -> StudyDirection:
+    def get_study_direction(self, study_id: int) -> core.study.StudyDirection:
 
         session = self.scoped_session()
 
@@ -358,7 +360,7 @@ class RDBStorage(BaseStorage):
         for study in study_summary:
             best_trial = None  # type: Optional[models.TrialModel]
             try:
-                if study.direction == StudyDirection.MAXIMIZE:
+                if study.direction == core.study.StudyDirection.MAXIMIZE:
                     best_trial = models.TrialModel.find_max_value_trial(study.study_id, session)
                 else:
                     best_trial = models.TrialModel.find_min_value_trial(study.study_id, session)
@@ -1030,7 +1032,7 @@ class RDBStorage(BaseStorage):
     def get_best_trial(self, study_id: int) -> FrozenTrial:
 
         session = self.scoped_session()
-        if self.get_study_direction(study_id) == StudyDirection.MAXIMIZE:
+        if self.get_study_direction(study_id) == core.study.StudyDirection.MAXIMIZE:
             trial = models.TrialModel.find_max_value_trial(study_id, session)
         else:
             trial = models.TrialModel.find_min_value_trial(study_id, session)

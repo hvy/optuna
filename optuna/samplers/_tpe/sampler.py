@@ -12,8 +12,8 @@ import numpy as np
 import scipy.special
 from scipy.stats import truncnorm
 
+from optuna import core
 from optuna import distributions
-from optuna._study_direction import StudyDirection
 from optuna.distributions import BaseDistribution
 from optuna.exceptions import ExperimentalWarning
 from optuna.logging import get_logger
@@ -771,7 +771,7 @@ def _get_observation_pairs(
     """
 
     sign = 1
-    if study.direction == StudyDirection.MAXIMIZE:
+    if study.direction == core.study.StudyDirection.MAXIMIZE:
         sign = -1
 
     values = []
@@ -807,7 +807,7 @@ def _get_multivariate_observation_pairs(
 ) -> Tuple[Dict[str, List[Optional[float]]], List[Tuple[float, float]]]:
 
     sign = 1
-    if study.direction == StudyDirection.MAXIMIZE:
+    if study.direction == core.study.StudyDirection.MAXIMIZE:
         sign = -1
 
     scores = []

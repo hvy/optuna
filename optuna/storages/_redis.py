@@ -7,11 +7,11 @@ from typing import List  # NOQA
 from typing import Optional  # NOQA
 
 import optuna
+from optuna import core
 from optuna import distributions
 from optuna import exceptions
 from optuna._experimental import experimental
 from optuna._imports import try_import
-from optuna._study_direction import StudyDirection
 from optuna._study_summary import StudySummary
 from optuna.storages import BaseStorage
 from optuna.storages._base import DEFAULT_STUDY_NAME_PREFIX
@@ -91,12 +91,12 @@ class RedisStorage(BaseStorage):
             pipe.set("study_id:{:010d}:study_name".format(study_id), pickle.dumps(study_name))
             pipe.set(
                 "study_id:{:010d}:direction".format(study_id),
-                pickle.dumps(StudyDirection.NOT_SET),
+                pickle.dumps(core.study.StudyDirection.NOT_SET),
             )
 
             study_summary = StudySummary(
                 study_name=study_name,
-                direction=StudyDirection.NOT_SET,
+                direction=core.study.StudyDirection.NOT_SET,
                 best_trial=None,
                 user_attrs={},
                 system_attrs={},
@@ -166,7 +166,7 @@ class RedisStorage(BaseStorage):
 
         return "study_id:{:010d}:direction".format(study_id)
 
-    def set_study_direction(self, study_id: int, direction: StudyDirection) -> None:
+    def set_study_direction(self, study_id: int, direction: core.study.StudyDirection) -> None:
 
         self._check_study_id(study_id)
 
@@ -174,7 +174,10 @@ class RedisStorage(BaseStorage):
             direction_pkl = self._redis.get(self._key_study_direction(study_id))
             assert direction_pkl is not None
             current_direction = pickle.loads(direction_pkl)
-            if current_direction != StudyDirection.NOT_SET and current_direction != direction:
+            if (
+                current_direction != core.study.StudyDirection.NOT_SET
+                and current_direction != direction
+            ):
                 raise ValueError(
                     "Cannot overwrite study direction from {} to {}.".format(
                         current_direction, direction
@@ -229,7 +232,7 @@ class RedisStorage(BaseStorage):
             raise KeyError("No such study: {}.".format(study_id))
         return pickle.loads(study_name_pkl)
 
-    def get_study_direction(self, study_id: int) -> StudyDirection:
+    def get_study_direction(self, study_id: int) -> core.study.StudyDirection:
 
         direction_pkl = self._redis.get("study_id:{:010d}:direction".format(study_id))
         if direction_pkl is None:
@@ -406,7 +409,7 @@ class RedisStorage(BaseStorage):
             if len(all_trials) == 0:
                 raise ValueError("No trials are completed yet.")
 
-            if self.get_study_direction(study_id) == StudyDirection.MAXIMIZE:
+            if self.get_study_direction(study_id) == core.study.StudyDirection.MAXIMIZE:
                 best_trial = max(all_trials, key=lambda t: t.value)
             else:
                 best_trial = min(all_trials, key=lambda t: t.value)
@@ -464,7 +467,7 @@ class RedisStorage(BaseStorage):
         # Complete trials do not have `None` values.
         assert new_value is not None
 
-        if self.get_study_direction(study_id) == StudyDirection.MAXIMIZE:
+        if self.get_study_direction(study_id) == core.study.StudyDirection.MAXIMIZE:
             if new_value > best_value:
                 self._set_best_trial(study_id, trial_id)
         else:

@@ -9,8 +9,8 @@ from typing import Tuple
 import uuid
 
 import optuna
+from optuna import core
 from optuna import distributions  # NOQA
-from optuna._study_direction import StudyDirection
 from optuna._study_summary import StudySummary
 from optuna.exceptions import DuplicatedStudyError
 from optuna.storages import BaseStorage
@@ -77,13 +77,16 @@ class InMemoryStorage(BaseStorage):
             del self._study_name_to_id[study_name]
             del self._studies[study_id]
 
-    def set_study_direction(self, study_id: int, direction: StudyDirection) -> None:
+    def set_study_direction(self, study_id: int, direction: core.study.StudyDirection) -> None:
 
         with self._lock:
             self._check_study_id(study_id)
 
             study = self._studies[study_id]
-            if study.direction != StudyDirection.NOT_SET and study.direction != direction:
+            if (
+                study.direction != core.study.StudyDirection.NOT_SET
+                and study.direction != direction
+            ):
                 raise ValueError(
                     "Cannot overwrite study direction from {} to {}.".format(
                         study.direction, direction
@@ -126,7 +129,7 @@ class InMemoryStorage(BaseStorage):
             self._check_study_id(study_id)
             return self._studies[study_id].name
 
-    def get_study_direction(self, study_id: int) -> StudyDirection:
+    def get_study_direction(self, study_id: int) -> core.study.StudyDirection:
 
         with self._lock:
             self._check_study_id(study_id)
@@ -316,7 +319,7 @@ class InMemoryStorage(BaseStorage):
         # Complete trials do not have `None` values.
         assert new_value is not None
 
-        if self.get_study_direction(study_id) == StudyDirection.MAXIMIZE:
+        if self.get_study_direction(study_id) == core.study.StudyDirection.MAXIMIZE:
             if best_value < new_value:
                 self._studies[study_id].best_trial_id = trial_id
         else:
@@ -419,5 +422,5 @@ class _StudyInfo:
         self.user_attrs = {}  # type: Dict[str, Any]
         self.system_attrs = {}  # type: Dict[str, Any]
         self.name = name  # type: str
-        self.direction = StudyDirection.NOT_SET
+        self.direction = core.study.StudyDirection.NOT_SET
         self.best_trial_id = None  # type: Optional[int]

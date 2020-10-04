@@ -6,24 +6,24 @@ from typing import List
 import numpy as np
 
 import optuna
-from optuna._study_direction import StudyDirection
+from optuna import core
 from optuna.pruners import BasePruner
 from optuna.trial._state import TrialState
 
 
 def _get_best_intermediate_result_over_steps(
-    trial: "optuna.trial.FrozenTrial", direction: StudyDirection
+    trial: "optuna.trial.FrozenTrial", direction: core.study.StudyDirection
 ) -> float:
 
     values = np.array(list(trial.intermediate_values.values()), np.float)
-    if direction == StudyDirection.MAXIMIZE:
+    if direction == core.study.StudyDirection.MAXIMIZE:
         return np.nanmax(values)
     return np.nanmin(values)
 
 
 def _get_percentile_intermediate_result_over_trials(
     all_trials: List["optuna.trial.FrozenTrial"],
-    direction: StudyDirection,
+    direction: core.study.StudyDirection,
     step: int,
     percentile: float,
 ) -> float:
@@ -33,7 +33,7 @@ def _get_percentile_intermediate_result_over_trials(
     if len(completed_trials) == 0:
         raise ValueError("No trials have been completed.")
 
-    if direction == StudyDirection.MAXIMIZE:
+    if direction == core.study.StudyDirection.MAXIMIZE:
         percentile = 100 - percentile
 
     return float(
@@ -196,6 +196,6 @@ class PercentilePruner(BasePruner):
         if math.isnan(p):
             return False
 
-        if direction == StudyDirection.MAXIMIZE:
+        if direction == core.study.StudyDirection.MAXIMIZE:
             return best_intermediate_result < p
         return best_intermediate_result > p

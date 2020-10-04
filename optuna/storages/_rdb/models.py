@@ -18,8 +18,8 @@ from sqlalchemy import String
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 
+from optuna import core
 from optuna import distributions
-from optuna._study_direction import StudyDirection
 from optuna.trial import TrialState
 
 
@@ -40,7 +40,7 @@ class StudyModel(BaseModel):
     __tablename__ = "studies"
     study_id = Column(Integer, primary_key=True)
     study_name = Column(String(MAX_INDEXED_STRING_LENGTH), index=True, unique=True, nullable=False)
-    direction = Column(Enum(StudyDirection), nullable=False)
+    direction = Column(Enum(core.study.StudyDirection), nullable=False)
 
     @classmethod
     def find_by_id(

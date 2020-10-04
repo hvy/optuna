@@ -4,7 +4,7 @@ from typing import Dict
 from typing import Optional
 import warnings
 
-from optuna import _study_direction
+from optuna import core
 from optuna import exceptions
 from optuna import trial
 from optuna._deprecated import deprecated
@@ -22,7 +22,7 @@ warnings.warn(_message, FutureWarning)
 
 # The use of the structs.StudyDirection is deprecated and it is recommended that you use
 # study.StudyDirection instead. See the API reference for more details.
-StudyDirection = _study_direction.StudyDirection
+StudyDirection = core.study.StudyDirection
 
 # The use of the structs.TrialState is deprecated and it is recommended that you use
 # trial.TrialState instead. See the API reference for more details.
@@ -74,7 +74,7 @@ class StudySummary(object):
     def __init__(
         self,
         study_name: str,
-        direction: _study_direction.StudyDirection,
+        direction: core.study.StudyDirection,
         best_trial: Optional[trial.FrozenTrial],
         user_attrs: Dict[str, Any],
         system_attrs: Dict[str, Any],

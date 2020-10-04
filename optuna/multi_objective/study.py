@@ -11,10 +11,10 @@ from typing import Type
 from typing import Union
 
 import optuna
+from optuna import core
 from optuna import logging
 from optuna import multi_objective
 from optuna._experimental import experimental
-from optuna._study_direction import StudyDirection
 from optuna.storages import BaseStorage
 from optuna.study import Study
 from optuna.trial import FrozenTrial
@@ -223,9 +223,9 @@ class MultiObjectiveStudy(object):
         self._directions = []
         for d in study.system_attrs["multi_objective:study:directions"]:
             if d == "minimize":
-                self._directions.append(StudyDirection.MINIMIZE)
+                self._directions.append(core.study.StudyDirection.MINIMIZE)
             elif d == "maximize":
-                self._directions.append(StudyDirection.MAXIMIZE)
+                self._directions.append(core.study.StudyDirection.MAXIMIZE)
             else:
                 raise ValueError("Unknown direction ({}) is specified.".format(d))
 
@@ -248,7 +248,7 @@ class MultiObjectiveStudy(object):
         return len(self._directions)
 
     @property
-    def directions(self) -> List[StudyDirection]:
+    def directions(self) -> List[core.study.StudyDirection]:
         """Return the optimization direction list.
 
         Returns:

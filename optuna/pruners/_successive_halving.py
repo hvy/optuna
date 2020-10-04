@@ -4,7 +4,7 @@ from typing import Optional
 from typing import Union
 
 import optuna
-from optuna._study_direction import StudyDirection
+from optuna import core
 from optuna.pruners._base import BasePruner
 from optuna.trial._state import TrialState
 
@@ -230,7 +230,7 @@ def _is_trial_promotable_to_next_rung(
     value: float,
     competing_values: List[float],
     reduction_factor: int,
-    study_direction: StudyDirection,
+    study_direction: core.study.StudyDirection,
 ) -> bool:
 
     promotable_idx = (len(competing_values) // reduction_factor) - 1
@@ -242,6 +242,6 @@ def _is_trial_promotable_to_next_rung(
         promotable_idx = 0
 
     competing_values.sort()
-    if study_direction == StudyDirection.MAXIMIZE:
+    if study_direction == core.study.StudyDirection.MAXIMIZE:
         return value >= competing_values[-(promotable_idx + 1)]
     return value <= competing_values[promotable_idx]

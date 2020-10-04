@@ -1,4 +1,4 @@
-from optuna._study_direction import StudyDirection
+from optuna import core
 from optuna.logging import get_logger
 from optuna.study import Study
 from optuna.trial import TrialState
@@ -67,8 +67,12 @@ def _get_optimization_history_plot(study: Study) -> "go.Figure":
         _logger.warning("Study instance does not contain trials.")
         return go.Figure(data=[], layout=layout)
 
-    best_values = [float("inf")] if study.direction == StudyDirection.MINIMIZE else [-float("inf")]
-    comp = min if study.direction == StudyDirection.MINIMIZE else max
+    best_values = (
+        [float("inf")]
+        if study.direction == core.study.StudyDirection.MINIMIZE
+        else [-float("inf")]
+    )
+    comp = min if study.direction == core.study.StudyDirection.MINIMIZE else max
     for trial in trials:
         trial_value = trial.value
         assert trial_value is not None  # For mypy

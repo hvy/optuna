@@ -6,9 +6,9 @@ from typing import Optional
 from typing import Sequence
 from typing import Union
 
+from optuna import core
 from optuna import multi_objective
 from optuna._experimental import experimental
-from optuna._study_direction import StudyDirection
 from optuna.distributions import BaseDistribution
 from optuna.trial import FrozenTrial
 from optuna.trial import Trial
@@ -336,7 +336,7 @@ class FrozenMultiObjectiveTrial(object):
     def _dominates(
         self,
         other: "multi_objective.trial.FrozenMultiObjectiveTrial",
-        directions: List[StudyDirection],
+        directions: List[core.study.StudyDirection],
     ) -> bool:
         if len(self.values) != len(other.values):
             raise ValueError("Trials with different numbers of objectives cannot be compared.")
@@ -383,11 +383,11 @@ class FrozenMultiObjectiveTrial(object):
     # TODO(ohta): Implement `__repr__` method.
 
 
-def _normalize_value(value: Optional[float], direction: StudyDirection) -> float:
+def _normalize_value(value: Optional[float], direction: core.study.StudyDirection) -> float:
     if value is None:
         value = float("inf")
 
-    if direction is StudyDirection.MAXIMIZE:
+    if direction is core.study.StudyDirection.MAXIMIZE:
         value = -value
 
     return value

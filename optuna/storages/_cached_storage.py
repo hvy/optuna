@@ -8,8 +8,8 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 
+from optuna import core
 from optuna import distributions
-from optuna._study_direction import StudyDirection
 from optuna._study_summary import StudySummary
 from optuna.storages import BaseStorage
 from optuna.storages._rdb.storage import RDBStorage
@@ -39,7 +39,7 @@ class _StudyInfo:
         self.updates = dict()  # type: Dict[int, _TrialUpdate]
         # Cache distributions to avoid storage access on distribution consistency check.
         self.param_distribution = {}  # type: Dict[str, distributions.BaseDistribution]
-        self.direction = StudyDirection.NOT_SET  # type: StudyDirection
+        self.direction = core.study.StudyDirection.NOT_SET  # type: core.study.StudyDirection
         self.name = None  # type: Optional[str]
 
 
@@ -89,14 +89,14 @@ class _CachedStorage(BaseStorage):
 
         self._backend.delete_study(study_id)
 
-    def set_study_direction(self, study_id: int, direction: StudyDirection) -> None:
+    def set_study_direction(self, study_id: int, direction: core.study.StudyDirection) -> None:
 
         with self._lock:
             if study_id in self._studies:
                 current_direction = self._studies[study_id].direction
                 if direction == current_direction:
                     return
-                elif current_direction == StudyDirection.NOT_SET:
+                elif current_direction == core.study.StudyDirection.NOT_SET:
                     self._studies[study_id].direction = direction
                     self._backend.set_study_direction(study_id, direction)
                     return
@@ -138,12 +138,12 @@ class _CachedStorage(BaseStorage):
             self._studies[study_id].name = name
         return name
 
-    def get_study_direction(self, study_id: int) -> StudyDirection:
+    def get_study_direction(self, study_id: int) -> core.study.StudyDirection:
 
         with self._lock:
             if study_id in self._studies:
                 direction = self._studies[study_id].direction
-                if direction != StudyDirection.NOT_SET:
+                if direction != core.study.StudyDirection.NOT_SET:
                     return direction
 
         direction = self._backend.get_study_direction(study_id)

@@ -11,6 +11,7 @@ from typing import Tuple
 import numpy as np
 
 import optuna
+from optuna import core
 from optuna import multi_objective
 from optuna._experimental import experimental
 from optuna.distributions import BaseDistribution
@@ -269,7 +270,7 @@ class NSGAIIMultiObjectiveSampler(BaseMultiObjectiveSampler):
 
 def _fast_non_dominated_sort(
     population: List["multi_objective.trial.FrozenMultiObjectiveTrial"],
-    directions: List[optuna.study.StudyDirection],
+    directions: List[core.study.StudyDirection],
 ) -> List[List["multi_objective.trial.FrozenMultiObjectiveTrial"]]:
     dominated_count = defaultdict(int)  # type: DefaultDict[int, int]
     dominates_list = defaultdict(list)
