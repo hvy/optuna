@@ -9,9 +9,9 @@ from typing import Set
 import numpy
 
 import optuna
+from optuna import core
 from optuna import distributions
 from optuna import logging
-from optuna._deprecated import deprecated
 from optuna._imports import try_import
 from optuna.distributions import BaseDistribution
 from optuna.distributions import CategoricalDistribution
@@ -464,7 +464,9 @@ class _Optimizer(object):
         return cma_param_value
 
 
-@deprecated("2.0.0", text="This class is renamed to :class:`~optuna.integration.PyCmaSampler`.")
+@core._deprecated.deprecated(
+    "2.0.0", text="This class is renamed to :class:`~optuna.integration.PyCmaSampler`."
+)
 class CmaEsSampler(PyCmaSampler):
     """Wrapper class of PyCmaSampler for backward compatibility."""
 

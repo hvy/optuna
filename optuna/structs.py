@@ -7,7 +7,6 @@ import warnings
 from optuna import core
 from optuna import exceptions
 from optuna import trial
-from optuna._deprecated import deprecated
 
 
 _message = (
@@ -29,7 +28,7 @@ StudyDirection = core.study.StudyDirection
 TrialState = trial.TrialState
 
 
-@deprecated(
+@core._deprecated.deprecated(
     "1.4.0",
     text=(
         "This class was moved to :mod:`~optuna.trial`. Please use "
@@ -40,7 +39,7 @@ class FrozenTrial(trial.FrozenTrial):
     pass
 
 
-@deprecated(
+@core._deprecated.deprecated(
     "1.4.0",
     text=(
         "This class was moved to :mod:`~optuna.study`. Please use "
@@ -114,7 +113,7 @@ class StudySummary(object):
         return self._study_id <= other._study_id
 
 
-@deprecated(
+@core._deprecated.deprecated(
     "0.19.0",
     text=(
         "This class was moved to :mod:`~optuna.exceptions`. Please use "

@@ -19,7 +19,7 @@ import numpy as np
 import tqdm
 
 import optuna
-from optuna._deprecated import deprecated
+from optuna import core
 from optuna._imports import try_import
 from optuna.integration._lightgbm_tuner.alias import _handling_alias_metrics
 from optuna.integration._lightgbm_tuner.alias import _handling_alias_parameters
@@ -767,7 +767,7 @@ class LightGBMTuner(_LightGBMBaseTuner):
             raise ValueError("`valid_sets` is required.")
 
     @property  # type: ignore
-    @deprecated(
+    @core._deprecated.deprecated(
         "1.4.0",
         text=(
             "Please get the best booster via "

@@ -3,7 +3,7 @@ from typing import Optional
 import warnings
 
 import optuna
-from optuna._deprecated import deprecated
+from optuna import core
 
 
 with optuna._imports.try_import() as _imports:
@@ -13,7 +13,7 @@ if not _imports.is_successful():
     Callback = object  # NOQA
 
 
-@deprecated(
+@core._deprecated.deprecated(
     "2.1.0",
     text="Recent Keras release (2.4.0) simply redirects all APIs "
     "in the standalone keras package to point to tf.keras. "
