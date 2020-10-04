@@ -4,8 +4,8 @@ from typing import Optional
 
 from tqdm.auto import tqdm
 
+from optuna import core
 from optuna import logging as optuna_logging
-from optuna._experimental import experimental
 
 
 _tqdm_handler = None  # type: Optional[_TqdmLoggingHandler]
@@ -48,7 +48,7 @@ class _ProgressBar(object):
 
     # TODO(hvy): Remove initialization indirection via this method when the progress bar is no
     # longer experimental.
-    @experimental("1.2.0", name="Progress bar")
+    @core._experimental.experimental("1.2.0", name="Progress bar")
     def _init_valid(self) -> None:
         self._progress_bar = tqdm(range(self._n_trials) if self._n_trials is not None else None)
         global _tqdm_handler

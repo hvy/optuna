@@ -8,9 +8,9 @@ from typing import Optional
 from typing import Union
 
 import optuna
+from optuna import core
 from optuna import load_study
 from optuna import Trial
-from optuna._experimental import experimental
 from optuna._imports import try_import
 
 
@@ -222,7 +222,7 @@ def dump_best_config(input_config_file: str, output_config_file: str, study: opt
         json.dump(best_config, f, indent=4)
 
 
-@experimental("1.4.0")
+@core._experimental.experimental("1.4.0")
 class AllenNLPExecutor(object):
     """AllenNLP extension to use optuna with Jsonnet config file.
 
@@ -364,7 +364,7 @@ class AllenNLPExecutor(object):
         return metrics[self._metrics]
 
 
-@experimental("2.0.0")
+@core._experimental.experimental("2.0.0")
 @EpochCallback.register("optuna_pruner")
 class AllenNLPPruningCallback(EpochCallback):
     """AllenNLP callback to prune unpromising trials.

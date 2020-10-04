@@ -27,7 +27,6 @@ from optuna import pruners
 from optuna import samplers
 from optuna import storages
 from optuna import trial as trial_module
-from optuna._experimental import experimental
 from optuna._imports import try_import
 from optuna._study_summary import StudySummary  # NOQA
 from optuna.core.study import StudyDirection  # NOQA
@@ -597,7 +596,7 @@ class Study(BaseStudy):
 
         self._stop_flag = True
 
-    @experimental("1.2.0")
+    @core._experimental.experimental("1.2.0")
     def enqueue_trial(self, params: Dict[str, Any]) -> None:
         """Enqueue a trial with given parameter values.
 
@@ -633,7 +632,7 @@ class Study(BaseStudy):
             create_trial(state=TrialState.WAITING, system_attrs={"fixed_params": params})
         )
 
-    @experimental("2.0.0")
+    @core._experimental.experimental("2.0.0")
     def add_trial(self, trial: FrozenTrial) -> None:
         """Add trial to study.
 

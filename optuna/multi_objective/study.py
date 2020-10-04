@@ -14,7 +14,6 @@ import optuna
 from optuna import core
 from optuna import logging
 from optuna import multi_objective
-from optuna._experimental import experimental
 from optuna.storages import BaseStorage
 from optuna.study import Study
 from optuna.trial import FrozenTrial
@@ -39,7 +38,7 @@ _logger = logging.get_logger(__name__)
 #
 # TODO(ohta): Consider to add `objective_labels` argument.
 # See: https://github.com/optuna/optuna/pull/1054#issuecomment-616382152
-@experimental("1.4.0")
+@core._experimental.experimental("1.4.0")
 def create_study(
     directions: List[str],
     study_name: Optional[str] = None,
@@ -131,7 +130,7 @@ def create_study(
     return MultiObjectiveStudy(study)
 
 
-@experimental("1.4.0")
+@core._experimental.experimental("1.4.0")
 def load_study(
     study_name: str,
     storage: Union[str, BaseStorage],
@@ -203,7 +202,7 @@ def load_study(
     return MultiObjectiveStudy(study)
 
 
-@experimental("1.4.0")
+@core._experimental.experimental("1.4.0")
 class MultiObjectiveStudy(object):
     """A study corresponds to a multi-objective optimization task, i.e., a set of trials.
 

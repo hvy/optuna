@@ -9,7 +9,7 @@ from typing import Optional
 import numpy as np
 from packaging import version
 
-from optuna._experimental import experimental
+from optuna import core
 from optuna._imports import try_import
 from optuna._study_direction import StudyDirection
 import optuna.logging
@@ -247,7 +247,7 @@ if _imports.is_successful():
             self.all_trials_widget.update(current_trials, new_trials)
 
 
-@experimental("0.1.0", name="Optuna dashboard")
+@core._experimental.experimental("0.1.0", name="Optuna dashboard")
 def _show_experimental_warning() -> None:
 
     pass

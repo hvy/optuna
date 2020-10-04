@@ -3,8 +3,8 @@ from typing import List
 from typing import Optional
 
 import optuna
+from optuna import core
 from optuna import multi_objective
-from optuna._experimental import experimental
 from optuna.multi_objective.study import MultiObjectiveStudy
 from optuna.multi_objective.trial import FrozenMultiObjectiveTrial
 from optuna.trial import TrialState
@@ -17,7 +17,7 @@ if _imports.is_successful():
 _logger = optuna.logging.get_logger(__name__)
 
 
-@experimental("2.0.0")
+@core._experimental.experimental("2.0.0")
 def plot_pareto_front(
     study: MultiObjectiveStudy,
     names: Optional[List[str]] = None,

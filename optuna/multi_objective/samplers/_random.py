@@ -3,13 +3,13 @@ from typing import Dict
 from typing import Optional
 
 import optuna
+from optuna import core
 from optuna import multi_objective
-from optuna._experimental import experimental
 from optuna.distributions import BaseDistribution
 from optuna.multi_objective.samplers import BaseMultiObjectiveSampler
 
 
-@experimental("1.4.0")
+@core._experimental.experimental("1.4.0")
 class RandomMultiObjectiveSampler(BaseMultiObjectiveSampler):
     """Multi-objective sampler using random sampling.
 
