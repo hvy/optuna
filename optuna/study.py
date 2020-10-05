@@ -7,6 +7,7 @@ import threading
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Iterator
 from typing import List
 from typing import Optional
 from typing import Set
@@ -554,6 +555,35 @@ class Study(BaseStudy):
             ]
 
         return df
+
+    def ask(self) -> Iterator[trial_module.Trial]:
+        # NOTE(hvy): `n_trials` could be an optional parameter to fix the number of trials.
+        # It could also be an argument to enable batched optimization.
+        while True:
+            # Sync storage once at the beginning of the objective evaluation.
+            self._storage.read_trials_from_remote_storage(self._study_id)
+
+            trial_id = self._pop_waiting_trial_id()
+            if trial_id is None:
+                trial_id = self._storage.create_new_trial(self._study_id)
+            trial = trial_module.Trial(self, trial_id)
+            yield trial
+
+    def tell(self, trial: trial_module.Trial, state: str, value: Optional[float] = None) -> None:
+        if state == "pruned":
+            state = TrialState.PRUNED
+        elif state == "completed":
+            state = TrialState.COMPLETE
+        elif state == "failed":
+            state = TrialState.FAIL
+        else:
+            raise ValueError
+
+        if state == TrialState.COMPLETE:
+            if value is None:
+                raise ValueError
+            self._storage.set_trial_value(trial._trial_id, value)
+        self._storage.set_trial_state(trial._trial_id, state)
 
     def stop(self) -> None:
 
