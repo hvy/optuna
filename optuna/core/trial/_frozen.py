@@ -8,6 +8,8 @@ from typing import Union
 from optuna import core
 from optuna import distributions
 from optuna import logging
+from optuna.core.trial._base import BaseTrial
+from optuna.core.trial._state import TrialState
 from optuna.distributions import BaseDistribution
 from optuna.distributions import CategoricalDistribution
 from optuna.distributions import DiscreteUniformDistribution
@@ -15,8 +17,6 @@ from optuna.distributions import IntLogUniformDistribution
 from optuna.distributions import IntUniformDistribution
 from optuna.distributions import LogUniformDistribution
 from optuna.distributions import UniformDistribution
-from optuna.trial._base import BaseTrial
-from optuna.trial._state import TrialState
 
 
 _logger = logging.get_logger(__name__)

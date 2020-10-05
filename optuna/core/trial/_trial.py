@@ -12,6 +12,7 @@ from optuna import core
 from optuna import distributions
 from optuna import logging
 from optuna import pruners
+from optuna.core.trial._base import BaseTrial
 from optuna.distributions import BaseDistribution
 from optuna.distributions import CategoricalChoiceType
 from optuna.distributions import CategoricalDistribution
@@ -20,7 +21,6 @@ from optuna.distributions import IntLogUniformDistribution
 from optuna.distributions import IntUniformDistribution
 from optuna.distributions import LogUniformDistribution
 from optuna.distributions import UniformDistribution
-from optuna.trial._base import BaseTrial
 
 
 _logger = logging.get_logger(__name__)

@@ -17,6 +17,7 @@ import pytest
 import optuna
 from optuna import samplers
 from optuna import storages
+from optuna.core.trial._frozen import create_trial
 from optuna.distributions import BaseDistribution
 from optuna.distributions import CategoricalDistribution
 from optuna.distributions import DiscreteUniformDistribution
@@ -32,7 +33,6 @@ from optuna.trial import FixedTrial
 from optuna.trial import FrozenTrial
 from optuna.trial import Trial
 from optuna.trial import TrialState
-from optuna.trial._frozen import create_trial
 
 
 parametrize_storage = pytest.mark.parametrize(

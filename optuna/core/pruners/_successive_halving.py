@@ -6,7 +6,7 @@ from typing import Union
 import optuna
 from optuna import core
 from optuna.core.pruners._base import BasePruner
-from optuna.trial._state import TrialState
+from optuna.core.trial._state import TrialState
 
 
 class SuccessiveHalvingPruner(BasePruner):

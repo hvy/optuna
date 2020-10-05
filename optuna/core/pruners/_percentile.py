@@ -8,7 +8,7 @@ import numpy as np
 import optuna
 from optuna import core
 from optuna.core.pruners._base import BasePruner
-from optuna.trial._state import TrialState
+from optuna.core.trial._state import TrialState
 
 
 def _get_best_intermediate_result_over_steps(
