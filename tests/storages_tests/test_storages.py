@@ -12,6 +12,7 @@ import pytest
 
 import optuna
 from optuna._study_summary import StudySummary
+from optuna.core.storages._base import DEFAULT_STUDY_NAME_PREFIX
 from optuna.distributions import CategoricalDistribution
 from optuna.distributions import LogUniformDistribution
 from optuna.distributions import UniformDistribution
@@ -20,7 +21,6 @@ from optuna.storages import BaseStorage
 from optuna.storages import InMemoryStorage
 from optuna.storages import RDBStorage
 from optuna.storages import RedisStorage
-from optuna.storages._base import DEFAULT_STUDY_NAME_PREFIX
 from optuna.study import StudyDirection
 from optuna.testing.storage import StorageSupplier
 from optuna.trial import FrozenTrial
