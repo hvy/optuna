@@ -5,7 +5,7 @@ from typing import Union
 
 import optuna
 from optuna import core
-from optuna.pruners._base import BasePruner
+from optuna.core.pruners._base import BasePruner
 from optuna.trial._state import TrialState
 
 

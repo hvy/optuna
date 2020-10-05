@@ -60,7 +60,7 @@ class Trial(BaseTrial):
 
         trial = self.storage.get_trial(self._trial_id)
 
-        study = pruners._filter_study(self.study, trial)
+        study = core.pruners._filter_study(self.study, trial)
 
         self.relative_search_space = self.study.sampler.infer_relative_search_space(study, trial)
         self.relative_params = self.study.sampler.sample_relative(
@@ -689,7 +689,7 @@ class Trial(BaseTrial):
             elif self._is_relative_param(name, distribution):
                 param_value = self.relative_params[name]
             else:
-                study = pruners._filter_study(self.study, trial)
+                study = core.pruners._filter_study(self.study, trial)
                 param_value = self.study.sampler.sample_independent(
                     study, trial, name, distribution
                 )

@@ -1,5 +1,5 @@
 import optuna
-from optuna.pruners import BasePruner
+from optuna.core.pruners._base import BasePruner
 
 
 class NopPruner(BasePruner):

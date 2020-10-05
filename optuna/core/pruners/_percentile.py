@@ -7,7 +7,7 @@ import numpy as np
 
 import optuna
 from optuna import core
-from optuna.pruners import BasePruner
+from optuna.core.pruners._base import BasePruner
 from optuna.trial._state import TrialState
 
 

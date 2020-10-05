@@ -194,7 +194,7 @@ def test_hyperband_no_call_of_filter_study_in_should_prune(
     sampler_init_func: Callable[[], optuna.samplers.BaseSampler]
 ) -> None:
     def objective(trial: optuna.trial.Trial) -> float:
-        with mock.patch("optuna.pruners._filter_study") as method_mock:
+        with mock.patch("optuna.core.pruners._filter_study") as method_mock:
             for i in range(N_REPORTS):
                 trial.report(i, step=i)
                 if trial.should_prune():
