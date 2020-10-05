@@ -12,7 +12,7 @@ import pytest
 
 import optuna
 from optuna import samplers
-from optuna.samplers._grid import GridValueType
+from optuna.core.samplers._grid import GridValueType
 from optuna.trial import Trial
 
 

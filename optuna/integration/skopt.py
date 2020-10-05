@@ -12,7 +12,7 @@ import optuna
 from optuna import distributions
 from optuna import samplers
 from optuna._imports import try_import
-from optuna._study_direction import StudyDirection
+from optuna.core.study import StudyDirection
 from optuna.exceptions import ExperimentalWarning
 from optuna.samplers import BaseSampler
 from optuna.study import Study

@@ -14,9 +14,9 @@ import numpy as np
 import optuna
 from optuna import core
 from optuna import logging
+from optuna.core.samplers._base import BaseSampler
 from optuna.distributions import BaseDistribution
 from optuna.exceptions import ExperimentalWarning
-from optuna.samplers import BaseSampler
 from optuna.trial import FrozenTrial
 from optuna.trial import TrialState
 
