@@ -11,7 +11,7 @@ from unittest.mock import patch
 import pytest
 
 import optuna
-from optuna._study_summary import StudySummary
+from optuna.core._study_summary import StudySummary
 from optuna.core.storages._base import DEFAULT_STUDY_NAME_PREFIX
 from optuna.distributions import CategoricalDistribution
 from optuna.distributions import LogUniformDistribution

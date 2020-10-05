@@ -28,7 +28,7 @@ import optuna
 from optuna import core
 from optuna import distributions
 from optuna import version
-from optuna._study_summary import StudySummary
+from optuna.core._study_summary import StudySummary
 from optuna.core.storages._base import BaseStorage
 from optuna.core.storages._base import DEFAULT_STUDY_NAME_PREFIX
 from optuna.storages._rdb import models

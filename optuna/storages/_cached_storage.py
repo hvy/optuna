@@ -10,7 +10,7 @@ from typing import Tuple
 
 from optuna import core
 from optuna import distributions
-from optuna._study_summary import StudySummary
+from optuna.core._study_summary import StudySummary
 from optuna.storages import BaseStorage
 from optuna.storages._rdb.storage import RDBStorage
 from optuna.trial import FrozenTrial

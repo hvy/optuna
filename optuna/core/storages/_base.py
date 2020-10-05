@@ -5,7 +5,7 @@ from typing import List
 from typing import Optional
 
 from optuna import core
-from optuna._study_summary import StudySummary
+from optuna.core._study_summary import StudySummary
 from optuna.distributions import BaseDistribution
 from optuna.trial import FrozenTrial
 from optuna.trial import TrialState

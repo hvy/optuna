@@ -28,7 +28,7 @@ from optuna import samplers
 from optuna import storages
 from optuna import trial as trial_module
 from optuna._imports import try_import
-from optuna._study_summary import StudySummary  # NOQA
+from optuna.core._study_summary import StudySummary  # NOQA
 from optuna.core.study import StudyDirection  # NOQA
 from optuna.trial import create_trial
 from optuna.trial import FrozenTrial
