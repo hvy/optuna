@@ -197,7 +197,7 @@ class TPESampler(BaseSampler):
         self._random_sampler.reseed_rng()
 
     def infer_relative_search_space(
-        self, study: Study, trial: FrozenTrial
+        self, study: core.study.Study, trial: FrozenTrial
     ) -> Dict[str, BaseDistribution]:
 
         if not self._multivariate:
@@ -228,7 +228,10 @@ class TPESampler(BaseSampler):
         )
 
     def sample_relative(
-        self, study: Study, trial: FrozenTrial, search_space: Dict[str, BaseDistribution]
+        self,
+        study: core.study.Study,
+        trial: FrozenTrial,
+        search_space: Dict[str, BaseDistribution],
     ) -> Dict[str, Any]:
 
         if search_space == {}:
@@ -265,7 +268,7 @@ class TPESampler(BaseSampler):
 
     def sample_independent(
         self,
-        study: Study,
+        study: core.study.Study,
         trial: FrozenTrial,
         param_name: str,
         param_distribution: BaseDistribution,
@@ -751,7 +754,7 @@ class TPESampler(BaseSampler):
 
 
 def _get_observation_pairs(
-    study: Study, param_name: str
+    study: core.study.Study, param_name: str
 ) -> Tuple[List[Optional[float]], List[Tuple[float, float]]]:
     """Get observation pairs from the study.
 
@@ -803,7 +806,7 @@ def _get_observation_pairs(
 
 
 def _get_multivariate_observation_pairs(
-    study: Study, param_names: List[str]
+    study: core.study.Study, param_names: List[str]
 ) -> Tuple[Dict[str, List[Optional[float]]], List[Tuple[float, float]]]:
 
     sign = 1

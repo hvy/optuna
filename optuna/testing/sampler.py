@@ -2,6 +2,7 @@ from typing import Any
 from typing import Dict
 
 import optuna
+from optuna import core
 from optuna import distributions
 from optuna.distributions import BaseDistribution
 
@@ -15,15 +16,15 @@ class DeterministicRelativeSampler(optuna.samplers.BaseSampler):
         self.relative_params = relative_params
 
     def infer_relative_search_space(
-        self, study: "optuna.study.Study", trial: "optuna.trial.FrozenTrial"
+        self, study: "core.study.Study", trial: "core.trial.FrozenTrial"
     ) -> Dict[str, BaseDistribution]:
 
         return self.relative_search_space
 
     def sample_relative(
         self,
-        study: "optuna.study.Study",
-        trial: "optuna.trial.FrozenTrial",
+        study: "core.study.Study",
+        trial: "core.trial.FrozenTrial",
         search_space: Dict[str, BaseDistribution],
     ) -> Dict[str, Any]:
 
@@ -31,8 +32,8 @@ class DeterministicRelativeSampler(optuna.samplers.BaseSampler):
 
     def sample_independent(
         self,
-        study: "optuna.study.Study",
-        trial: "optuna.trial.FrozenTrial",
+        study: "core.study.Study",
+        trial: "core.trial.FrozenTrial",
         param_name: str,
         param_distribution: BaseDistribution,
     ) -> Any:
@@ -56,8 +57,8 @@ class DeterministicRelativeSampler(optuna.samplers.BaseSampler):
 class FirstTrialOnlyRandomSampler(optuna.samplers.RandomSampler):
     def sample_relative(
         self,
-        study: "optuna.study.Study",
-        trial: "optuna.trial.FrozenTrial",
+        study: "core.study.Study",
+        trial: "core.trial.FrozenTrial",
         search_space: Dict[str, BaseDistribution],
     ) -> Dict[str, float]:
 
@@ -68,8 +69,8 @@ class FirstTrialOnlyRandomSampler(optuna.samplers.RandomSampler):
 
     def sample_independent(
         self,
-        study: "optuna.study.Study",
-        trial: "optuna.trial.FrozenTrial",
+        study: "core.study.Study",
+        trial: "core.trial.FrozenTrial",
         param_name: str,
         param_distribution: BaseDistribution,
     ) -> float:

@@ -4,11 +4,11 @@ from typing import Optional
 
 import numpy
 
-from optuna import distributions
+from optuna import core
+from optuna.core import distributions
+from optuna.core.distributions import BaseDistribution
 from optuna.core.samplers._base import BaseSampler
-from optuna.distributions import BaseDistribution
-from optuna.study import Study
-from optuna.trial import FrozenTrial
+from optuna.core.trial import FrozenTrial
 
 
 class RandomSampler(BaseSampler):
@@ -46,20 +46,23 @@ class RandomSampler(BaseSampler):
         self._rng = numpy.random.RandomState()
 
     def infer_relative_search_space(
-        self, study: Study, trial: FrozenTrial
+        self, study: "core.study.Study", trial: FrozenTrial
     ) -> Dict[str, BaseDistribution]:
 
         return {}
 
     def sample_relative(
-        self, study: Study, trial: FrozenTrial, search_space: Dict[str, BaseDistribution]
+        self,
+        study: "core.study.Study",
+        trial: FrozenTrial,
+        search_space: Dict[str, BaseDistribution],
     ) -> Dict[str, Any]:
 
         return {}
 
     def sample_independent(
         self,
-        study: Study,
+        study: "core.study.Study",
         trial: FrozenTrial,
         param_name: str,
         param_distribution: distributions.BaseDistribution,

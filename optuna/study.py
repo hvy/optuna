@@ -3,7 +3,6 @@ import copy
 import datetime
 import gc
 import math
-import threading
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -29,13 +28,13 @@ from optuna import storages
 from optuna import trial as trial_module
 from optuna._imports import try_import
 from optuna.core._study_summary import StudySummary  # NOQA
+from optuna.core.study import get_all_study_summaries  # NOQA
+from optuna.core.study import ObjectiveFuncType
 from optuna.core.study import StudyDirection  # NOQA
-from optuna.trial import create_trial
+from optuna.trial import create_trial  # NOQA
 from optuna.trial import FrozenTrial
 from optuna.trial import TrialState
 
-
-ObjectiveFuncType = Callable[[trial_module.Trial], float]
 
 with try_import() as _pandas_imports:
     # `trials_dataframe` is disabled if pandas is not available.
@@ -44,109 +43,7 @@ with try_import() as _pandas_imports:
 _logger = logging.get_logger(__name__)
 
 
-class BaseStudy(object):
-    def __init__(self, study_id: int, storage: storages.BaseStorage) -> None:
-
-        self._study_id = study_id
-        self._storage = storage
-
-    @property
-    def best_params(self) -> Dict[str, Any]:
-        """Return parameters of the best trial in the study.
-
-        Returns:
-            A dictionary containing parameters of the best trial.
-        """
-
-        return self.best_trial.params
-
-    @property
-    def best_value(self) -> float:
-        """Return the best objective value in the study.
-
-        Returns:
-            A float representing the best objective value.
-        """
-
-        best_value = self.best_trial.value
-        assert best_value is not None
-
-        return best_value
-
-    @property
-    def best_trial(self) -> FrozenTrial:
-        """Return the best trial in the study.
-
-        Returns:
-            A :class:`~optuna.FrozenTrial` object of the best trial.
-        """
-
-        return copy.deepcopy(self._storage.get_best_trial(self._study_id))
-
-    @property
-    def direction(self) -> core.study.StudyDirection:
-        """Return the direction of the study.
-
-        Returns:
-            A :class:`~optuna.study.StudyDirection` object.
-        """
-
-        return self._storage.get_study_direction(self._study_id)
-
-    @property
-    def trials(self) -> List[FrozenTrial]:
-        """Return all trials in the study.
-
-        The returned trials are ordered by trial number.
-
-        This is a short form of ``self.get_trials(deepcopy=True)``.
-
-        Returns:
-            A list of :class:`~optuna.FrozenTrial` objects.
-        """
-
-        return self.get_trials()
-
-    def get_trials(self, deepcopy: bool = True) -> List[FrozenTrial]:
-        """Return all trials in the study.
-
-        The returned trials are ordered by trial number.
-
-        For library users, it's recommended to use more handy
-        :attr:`~optuna.study.Study.trials` property to get the trials instead.
-
-        Example:
-            .. testcode::
-
-                import optuna
-
-
-                def objective(trial):
-                    x = trial.suggest_uniform("x", -1, 1)
-                    return x ** 2
-
-
-                study = optuna.create_study()
-                study.optimize(objective, n_trials=3)
-
-                trials = study.get_trials()
-                assert len(trials) == 3
-        Args:
-            deepcopy:
-                Flag to control whether to apply ``copy.deepcopy()`` to the trials.
-                Note that if you set the flag to :obj:`False`, you shouldn't mutate
-                any fields of the returned trial. Otherwise the internal state of
-                the study may corrupt and unexpected behavior may happen.
-
-        Returns:
-            A list of :class:`~optuna.FrozenTrial` objects.
-        """
-
-        self._storage.read_trials_from_remote_storage(self._study_id)
-        return self._storage.get_all_trials(self._study_id, deepcopy=deepcopy)
-
-
-class Study(BaseStudy):
+class Study(core.study.Study):
     """A study corresponds to an optimization task, i.e., a set of trials.
 
     This object provides interfaces to run a new :class:`~optuna.trial.Trial`, access trials'
@@ -165,77 +62,7 @@ class Study(BaseStudy):
         sampler: Optional["samplers.BaseSampler"] = None,
         pruner: Optional[pruners.BasePruner] = None,
     ) -> None:
-
-        self.study_name = study_name
-        storage = storages.get_storage(storage)
-        study_id = storage.get_study_id_from_name(study_name)
-        super(Study, self).__init__(study_id, storage)
-
-        self.sampler = sampler or samplers.TPESampler()
-        self.pruner = pruner or pruners.MedianPruner()
-
-        self._optimize_lock = threading.Lock()
-        self._stop_flag = False
-
-    def __getstate__(self) -> Dict[Any, Any]:
-
-        state = self.__dict__.copy()
-        del state["_optimize_lock"]
-        return state
-
-    def __setstate__(self, state: Dict[Any, Any]) -> None:
-
-        self.__dict__.update(state)
-        self._optimize_lock = threading.Lock()
-
-    @property
-    def user_attrs(self) -> Dict[str, Any]:
-        """Return user attributes.
-
-        .. seealso::
-
-            See :func:`~optuna.study.Study.set_user_attr` for related method.
-
-        Example:
-
-            .. testcode::
-
-                import optuna
-
-
-                def objective(trial):
-                    x = trial.suggest_float("x", 0, 1)
-                    y = trial.suggest_float("y", 0, 1)
-                    return x ** 2 + y ** 2
-
-
-                study = optuna.create_study()
-
-                study.set_user_attr("objective function", "quadratic function")
-                study.set_user_attr("dimensions", 2)
-                study.set_user_attr("contributors", ["Akiba", "Sano"])
-
-                assert study.user_attrs == {
-                    "objective function": "quadratic function",
-                    "dimensions": 2,
-                    "contributors": ["Akiba", "Sano"],
-                }
-
-        Returns:
-            A dictionary containing all user attributes.
-        """
-
-        return copy.deepcopy(self._storage.get_study_user_attrs(self._study_id))
-
-    @property
-    def system_attrs(self) -> Dict[str, Any]:
-        """Return system attributes.
-
-        Returns:
-            A dictionary containing all system attributes.
-        """
-
-        return copy.deepcopy(self._storage.get_study_system_attrs(self._study_id))
+        super(Study, self).__init__(study_name, storages.get_storage(storage), sampler, pruner)
 
     def optimize(
         self,
@@ -384,60 +211,6 @@ class Study(BaseStudy):
             self._progress_bar.close()
             del self._progress_bar
 
-    def set_user_attr(self, key: str, value: Any) -> None:
-        """Set a user attribute to the study.
-
-        .. seealso::
-
-            See :attr:`~optuna.study.Study.user_attrs` for related attribute.
-
-        Example:
-
-            .. testcode::
-
-                import optuna
-
-
-                def objective(trial):
-                    x = trial.suggest_float("x", 0, 1)
-                    y = trial.suggest_float("y", 0, 1)
-                    return x ** 2 + y ** 2
-
-
-                study = optuna.create_study()
-
-                study.set_user_attr("objective function", "quadratic function")
-                study.set_user_attr("dimensions", 2)
-                study.set_user_attr("contributors", ["Akiba", "Sano"])
-
-                assert study.user_attrs == {
-                    "objective function": "quadratic function",
-                    "dimensions": 2,
-                    "contributors": ["Akiba", "Sano"],
-                }
-
-        Args:
-            key: A key string of the attribute.
-            value: A value of the attribute. The value should be JSON serializable.
-
-        """
-
-        self._storage.set_study_user_attr(self._study_id, key, value)
-
-    def set_system_attr(self, key: str, value: Any) -> None:
-        """Set a system attribute to the study.
-
-        Note that Optuna internally uses this method to save system messages. Please use
-        :func:`~optuna.study.Study.set_user_attr` to set users' attributes.
-
-        Args:
-            key: A key string of the attribute.
-            value: A value of the attribute. The value should be JSON serializable.
-
-        """
-
-        self._storage.set_study_system_attr(self._study_id, key, value)
-
     def trials_dataframe(
         self,
         attrs: Tuple[str, ...] = (
@@ -554,149 +327,6 @@ class Study(BaseStudy):
             ]
 
         return df
-
-    def stop(self) -> None:
-
-        """Exit from the current optimization loop after the running trials finish.
-
-        This method lets the running :meth:`~optuna.study.Study.optimize` method return
-        immediately after all trials which the :meth:`~optuna.study.Study.optimize` method
-        spawned finishes.
-        This method does not affect any behaviors of parallel or successive study processes.
-
-        Example:
-
-            .. testcode::
-
-                import optuna
-
-
-                def objective(trial):
-                    if trial.number == 4:
-                        trial.study.stop()
-                    x = trial.suggest_uniform("x", 0, 10)
-                    return x ** 2
-
-
-                study = optuna.create_study()
-                study.optimize(objective, n_trials=10)
-                assert len(study.trials) == 5
-
-        Raises:
-            RuntimeError:
-                If this method is called outside an objective function or callback.
-        """
-
-        if self._optimize_lock.acquire(False):
-            self._optimize_lock.release()
-            raise RuntimeError(
-                "`Study.stop` is supposed to be invoked inside an objective function or a "
-                "callback."
-            )
-
-        self._stop_flag = True
-
-    @core._experimental.experimental("1.2.0")
-    def enqueue_trial(self, params: Dict[str, Any]) -> None:
-        """Enqueue a trial with given parameter values.
-
-        You can fix the next sampling parameters which will be evaluated in your
-        objective function.
-
-        Example:
-
-            .. testcode::
-
-                import optuna
-
-
-                def objective(trial):
-                    x = trial.suggest_uniform("x", 0, 10)
-                    return x ** 2
-
-
-                study = optuna.create_study()
-                study.enqueue_trial({"x": 5})
-                study.enqueue_trial({"x": 0})
-                study.optimize(objective, n_trials=2)
-
-                assert study.trials[0].params == {"x": 5}
-                assert study.trials[1].params == {"x": 0}
-
-        Args:
-            params:
-                Parameter values to pass your objective function.
-        """
-
-        self.add_trial(
-            create_trial(state=TrialState.WAITING, system_attrs={"fixed_params": params})
-        )
-
-    @core._experimental.experimental("2.0.0")
-    def add_trial(self, trial: FrozenTrial) -> None:
-        """Add trial to study.
-
-        The trial is validated before being added.
-
-        Example:
-
-            .. testcode::
-
-                import optuna
-                from optuna.distributions import UniformDistribution
-
-
-                def objective(trial):
-                    x = trial.suggest_uniform("x", 0, 10)
-                    return x ** 2
-
-
-                study = optuna.create_study()
-                assert len(study.trials) == 0
-
-                trial = optuna.trial.create_trial(
-                    params={"x": 2.0},
-                    distributions={"x": UniformDistribution(0, 10)},
-                    value=4.0,
-                )
-
-                study.add_trial(trial)
-                assert len(study.trials) == 1
-
-                study.optimize(objective, n_trials=3)
-                assert len(study.trials) == 4
-
-                other_study = optuna.create_study()
-
-                for trial in study.trials:
-                    other_study.add_trial(trial)
-                assert len(other_study.trials) == len(study.trials)
-
-                other_study.optimize(objective, n_trials=2)
-                assert len(other_study.trials) == len(study.trials) + 2
-
-        .. seealso::
-
-            This method should in general be used to add already evaluated trials
-            (``trial.state.is_finished() == True``). To queue trials for evaluation,
-            please refer to :func:`~optuna.study.Study.enqueue_trial`.
-
-        .. seealso::
-
-            See :func:`~optuna.trial.create_trial` for how to create trials.
-
-        Args:
-            trial: Trial to add.
-
-        Raises:
-            :exc:`ValueError`:
-                If trial is an invalid state.
-
-        """
-
-        trial._validate()
-
-        self._storage.create_new_trial(self._study_id, template_trial=trial)
 
     def _reseed_and_optimize_sequential(
         self,
@@ -964,9 +594,9 @@ def create_study(
     study = Study(study_name=study_name, storage=storage, sampler=sampler, pruner=pruner)
 
     if direction == "minimize":
-        _direction = core.study.StudyDirection.MINIMIZE
+        _direction = StudyDirection.MINIMIZE
     elif direction == "maximize":
-        _direction = core.study.StudyDirection.MAXIMIZE
+        _direction = StudyDirection.MAXIMIZE
     else:
         raise ValueError("Please set either 'minimize' or 'maximize' to direction.")
 
@@ -1084,56 +714,3 @@ def delete_study(
     storage = storages.get_storage(storage)
     study_id = storage.get_study_id_from_name(study_name)
     storage.delete_study(study_id)
-
-
-def get_all_study_summaries(storage: Union[str, storages.BaseStorage]) -> List[StudySummary]:
-    """Get all history of studies stored in a specified storage.
-
-    Example:
-
-        .. testsetup::
-
-            import os
-
-            if os.path.exists("example.db"):
-                raise RuntimeError("'example.db' already exists. Please remove it.")
-
-        .. testcode::
-
-            import optuna
-
-
-            def objective(trial):
-                x = trial.suggest_float("x", -10, 10)
-                return (x - 2) ** 2
-
-
-            study = optuna.create_study(study_name="example-study", storage="sqlite:///example.db")
-            study.optimize(objective, n_trials=3)
-
-            study_summaries = optuna.study.get_all_study_summaries(storage="sqlite:///example.db")
-            assert len(study_summaries) == 1
-
-            study_summary = study_summaries[0]
-            assert study_summary.study_name == "example-study"
-
-        .. testcleanup::
-
-            os.remove("example.db")
-
-    Args:
-        storage:
-            Database URL such as ``sqlite:///example.db``. Please see also the documentation of
-            :func:`~optuna.study.create_study` for further details.
-
-    Returns:
-        List of study history summarized as :class:`~optuna.study.StudySummary` objects.
-
-    See also:
-        :func:`optuna.get_all_study_summaries` is an alias of
-        :func:`optuna.study.get_all_study_summaries`.
-
-    """
-
-    storage = storages.get_storage(storage)
-    return storage.get_all_study_summaries()

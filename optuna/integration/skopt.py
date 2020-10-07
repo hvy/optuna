@@ -9,6 +9,7 @@ import warnings
 import numpy as np
 
 import optuna
+from optuna import core
 from optuna import distributions
 from optuna import samplers
 from optuna._imports import try_import
@@ -133,7 +134,7 @@ class SkoptSampler(BaseSampler):
         self._independent_sampler.reseed_rng()
 
     def infer_relative_search_space(
-        self, study: Study, trial: FrozenTrial
+        self, study: core.study.Study, trial: FrozenTrial
     ) -> Dict[str, distributions.BaseDistribution]:
 
         search_space = {}
@@ -152,7 +153,7 @@ class SkoptSampler(BaseSampler):
 
     def sample_relative(
         self,
-        study: Study,
+        study: core.study.Study,
         trial: FrozenTrial,
         search_space: Dict[str, distributions.BaseDistribution],
     ) -> Dict[str, Any]:
@@ -170,7 +171,7 @@ class SkoptSampler(BaseSampler):
 
     def sample_independent(
         self,
-        study: Study,
+        study: core.study.Study,
         trial: FrozenTrial,
         param_name: str,
         param_distribution: distributions.BaseDistribution,
@@ -199,7 +200,7 @@ class SkoptSampler(BaseSampler):
             )
         )
 
-    def _get_trials(self, study: Study) -> List[FrozenTrial]:
+    def _get_trials(self, study: core.study.Study) -> List[FrozenTrial]:
         complete_trials = []
         for t in study.get_trials(deepcopy=False):
             if t.state == TrialState.COMPLETE:
@@ -257,7 +258,7 @@ class _Optimizer(object):
 
         self._optimizer = skopt.Optimizer(dimensions, **skopt_kwargs)
 
-    def tell(self, study: Study, complete_trials: List[FrozenTrial]) -> None:
+    def tell(self, study: core.study.Study, complete_trials: List[FrozenTrial]) -> None:
 
         xs = []
         ys = []
@@ -310,7 +311,7 @@ class _Optimizer(object):
         return True
 
     def _complete_trial_to_skopt_observation(
-        self, study: Study, trial: FrozenTrial
+        self, study: core.study.Study, trial: FrozenTrial
     ) -> Tuple[List[Any], float]:
 
         param_values = []

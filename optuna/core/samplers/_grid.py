@@ -8,11 +8,11 @@ from typing import Mapping
 from typing import Sequence
 from typing import Union
 
+from optuna import core
+from optuna.core.distributions import BaseDistribution
+from optuna.core.logging import get_logger
 from optuna.core.samplers._base import BaseSampler
-from optuna.distributions import BaseDistribution
-from optuna.logging import get_logger
-from optuna.study import Study
-from optuna.trial import FrozenTrial
+from optuna.core.trial import FrozenTrial
 
 
 GridValueType = Union[str, float, int, bool, None]
@@ -94,13 +94,16 @@ class GridSampler(BaseSampler):
         self._n_min_trials = len(self._all_grids)
 
     def infer_relative_search_space(
-        self, study: Study, trial: FrozenTrial
+        self, study: "core.study.Study", trial: FrozenTrial
     ) -> Dict[str, BaseDistribution]:
 
         return {}
 
     def sample_relative(
-        self, study: Study, trial: FrozenTrial, search_space: Dict[str, BaseDistribution]
+        self,
+        study: "core.study.Study",
+        trial: FrozenTrial,
+        search_space: Dict[str, BaseDistribution],
     ) -> Dict[str, Any]:
         # Instead of returning param values, GridSampler puts the target grid id as a system attr,
         # and the values are returned from `sample_independent`. This is because the distribution
@@ -142,7 +145,7 @@ class GridSampler(BaseSampler):
 
     def sample_independent(
         self,
-        study: Study,
+        study: "core.study.Study",
         trial: FrozenTrial,
         param_name: str,
         param_distribution: BaseDistribution,
@@ -182,7 +185,7 @@ class GridSampler(BaseSampler):
             " or `None`.".format(param_name, type(param_value))
         )
 
-    def _get_unvisited_grid_ids(self, study: Study) -> List[int]:
+    def _get_unvisited_grid_ids(self, study: "core.study.Study") -> List[int]:
 
         # List up unvisited grids based on already finished ones.
         visited_grids = []

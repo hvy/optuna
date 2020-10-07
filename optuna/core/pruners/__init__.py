@@ -1,3 +1,4 @@
+from optuna import core
 from optuna.core.pruners._base import BasePruner  # NOQA
 from optuna.core.pruners._hyperband import HyperbandPruner  # NOQA
 from optuna.core.pruners._median import MedianPruner  # NOQA
@@ -8,8 +9,8 @@ from optuna.core.pruners._threshold import ThresholdPruner  # NOQA
 
 
 def _filter_study(
-    study: "optuna.study.Study", trial: "optuna.trial.FrozenTrial"
-) -> "optuna.study.Study":
+    study: "core.study.Study", trial: "core.trial.FrozenTrial"
+) -> "core.study.Study":
     if isinstance(study.pruner, HyperbandPruner):
         # Create `_BracketStudy` to use trials that have the same bracket id.
         pruner = study.pruner  # type: HyperbandPruner

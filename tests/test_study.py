@@ -948,7 +948,7 @@ def test_study_summary_lt_le() -> None:
 def test_log_completed_trial(capsys: _pytest.capture.CaptureFixture) -> None:
 
     # We need to reconstruct our default handler to properly capture stderr.
-    optuna.logging._reset_library_root_logger()
+    optuna.core.logging._reset_library_root_logger()
     optuna.logging.set_verbosity(optuna.logging.INFO)
 
     study = optuna.create_study()

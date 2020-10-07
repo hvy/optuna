@@ -148,7 +148,7 @@ def test_callbacks() -> None:
 def test_log_completed_trial(capsys: _pytest.capture.CaptureFixture) -> None:
 
     # We need to reconstruct our default handler to properly capture stderr.
-    optuna.logging._reset_library_root_logger()
+    optuna.core.logging._reset_library_root_logger()
     optuna.logging.set_verbosity(optuna.logging.INFO)
 
     study = optuna.multi_objective.create_study(["minimize", "maximize"])

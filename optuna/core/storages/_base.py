@@ -6,9 +6,9 @@ from typing import Optional
 
 from optuna import core
 from optuna.core._study_summary import StudySummary
-from optuna.distributions import BaseDistribution
-from optuna.trial import FrozenTrial
-from optuna.trial import TrialState
+from optuna.core.distributions import BaseDistribution
+from optuna.core.trial import FrozenTrial
+from optuna.core.trial import TrialState
 
 
 DEFAULT_STUDY_NAME_PREFIX = "no-name-"
@@ -162,7 +162,7 @@ class BaseStorage(object, metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def set_study_direction(self, study_id: int, direction: core.study.StudyDirection) -> None:
+    def set_study_direction(self, study_id: int, direction: "core.study.StudyDirection") -> None:
         """Register an optimization problem direction to a study.
 
         Args:
@@ -235,7 +235,7 @@ class BaseStorage(object, metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_study_direction(self, study_id: int) -> core.study.StudyDirection:
+    def get_study_direction(self, study_id: int) -> "core.study.StudyDirection":
         """Read whether a study maximizes or minimizes an objective.
 
         Args:

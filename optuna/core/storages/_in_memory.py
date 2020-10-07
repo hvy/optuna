@@ -8,18 +8,17 @@ from typing import Optional
 from typing import Tuple
 import uuid
 
-import optuna
 from optuna import core
-from optuna import distributions  # NOQA
+from optuna.core import distributions  # NOQA
 from optuna.core._study_summary import StudySummary
+from optuna.core.exceptions import DuplicatedStudyError
 from optuna.core.storages._base import BaseStorage
 from optuna.core.storages._base import DEFAULT_STUDY_NAME_PREFIX
-from optuna.exceptions import DuplicatedStudyError
-from optuna.trial import FrozenTrial
-from optuna.trial import TrialState
+from optuna.core.trial import FrozenTrial
+from optuna.core.trial import TrialState
 
 
-_logger = optuna.logging.get_logger(__name__)
+_logger = core.logging.get_logger(__name__)
 
 
 class InMemoryStorage(BaseStorage):
@@ -77,7 +76,7 @@ class InMemoryStorage(BaseStorage):
             del self._study_name_to_id[study_name]
             del self._studies[study_id]
 
-    def set_study_direction(self, study_id: int, direction: core.study.StudyDirection) -> None:
+    def set_study_direction(self, study_id: int, direction: "core.study.StudyDirection") -> None:
 
         with self._lock:
             self._check_study_id(study_id)
@@ -129,7 +128,7 @@ class InMemoryStorage(BaseStorage):
             self._check_study_id(study_id)
             return self._studies[study_id].name
 
-    def get_study_direction(self, study_id: int) -> core.study.StudyDirection:
+    def get_study_direction(self, study_id: int) -> "core.study.StudyDirection":
 
         with self._lock:
             self._check_study_id(study_id)

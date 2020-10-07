@@ -198,7 +198,7 @@ class CmaEsSampler(BaseSampler):
         self._independent_sampler.reseed_rng()
 
     def infer_relative_search_space(
-        self, study: "optuna.Study", trial: "optuna.trial.FrozenTrial"
+        self, study: "core.study.Study", trial: "optuna.trial.FrozenTrial"
     ) -> Dict[str, BaseDistribution]:
         search_space = {}  # type: Dict[str, BaseDistribution]
         for name, distribution in self._search_space.calculate(study).items():
@@ -226,7 +226,7 @@ class CmaEsSampler(BaseSampler):
 
     def sample_relative(
         self,
-        study: "optuna.Study",
+        study: "core.study.Study",
         trial: "optuna.trial.FrozenTrial",
         search_space: Dict[str, BaseDistribution],
     ) -> Dict[str, Any]:
@@ -384,7 +384,7 @@ class CmaEsSampler(BaseSampler):
 
     def sample_independent(
         self,
-        study: "optuna.Study",
+        study: "core.study.Study",
         trial: "optuna.trial.FrozenTrial",
         param_name: str,
         param_distribution: BaseDistribution,
@@ -410,7 +410,7 @@ class CmaEsSampler(BaseSampler):
             )
         )
 
-    def _get_trials(self, study: "optuna.Study") -> List[FrozenTrial]:
+    def _get_trials(self, study: "core.study.Study") -> List[FrozenTrial]:
         complete_trials = []
         for t in study.get_trials(deepcopy=False):
             if t.state == TrialState.COMPLETE:

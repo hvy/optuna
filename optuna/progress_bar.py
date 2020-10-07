@@ -6,6 +6,7 @@ from tqdm.auto import tqdm
 
 from optuna import core
 from optuna import logging as optuna_logging
+from optuna.core import logging as optuna_core_logging
 
 
 _tqdm_handler = None  # type: Optional[_TqdmLoggingHandler]
@@ -56,8 +57,8 @@ class _ProgressBar(object):
         _tqdm_handler = _TqdmLoggingHandler()
         _tqdm_handler.setLevel(logging.INFO)
         _tqdm_handler.setFormatter(optuna_logging.create_default_formatter())
-        optuna_logging.disable_default_handler()
-        optuna_logging._get_library_root_logger().addHandler(_tqdm_handler)
+        optuna_core_logging.disable_default_handler()
+        optuna_core_logging._get_library_root_logger().addHandler(_tqdm_handler)
 
     def update(self, elapsed_seconds: Optional[float]) -> None:
         """Update the progress bars if ``is_valid`` is ``True``.
@@ -78,5 +79,5 @@ class _ProgressBar(object):
         if self._is_valid:
             self._progress_bar.close()
             assert _tqdm_handler is not None
-            optuna_logging._get_library_root_logger().removeHandler(_tqdm_handler)
-            optuna_logging.enable_default_handler()
+            optuna_core_logging._get_library_root_logger().removeHandler(_tqdm_handler)
+            optuna_core_logging.enable_default_handler()

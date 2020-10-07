@@ -3,7 +3,6 @@ from typing import List
 from typing import Optional
 from typing import Union
 
-import optuna
 from optuna import core
 from optuna.core.pruners._base import BasePruner
 from optuna.core.trial._state import TrialState
@@ -143,7 +142,7 @@ class SuccessiveHalvingPruner(BasePruner):
         self._reduction_factor = reduction_factor
         self._min_early_stopping_rate = min_early_stopping_rate
 
-    def prune(self, study: "optuna.study.Study", trial: "optuna.trial.FrozenTrial") -> bool:
+    def prune(self, study: "core.study.Study", trial: "core.trial.FrozenTrial") -> bool:
 
         step = trial.last_step
         if step is None:
@@ -151,7 +150,7 @@ class SuccessiveHalvingPruner(BasePruner):
 
         rung = _get_current_rung(trial)
         value = trial.intermediate_values[step]
-        trials = None  # type: Optional[List["optuna.trial.FrozenTrial"]]
+        trials = None  # type: Optional[List["core.trial.FrozenTrial"]]
 
         while True:
             if self._min_resource is None:
@@ -189,7 +188,7 @@ class SuccessiveHalvingPruner(BasePruner):
             rung += 1
 
 
-def _estimate_min_resource(trials: List["optuna.trial.FrozenTrial"]) -> Optional[int]:
+def _estimate_min_resource(trials: List["core.trial.FrozenTrial"]) -> Optional[int]:
 
     n_steps = [
         t.last_step for t in trials if t.state == TrialState.COMPLETE and t.last_step is not None
@@ -203,7 +202,7 @@ def _estimate_min_resource(trials: List["optuna.trial.FrozenTrial"]) -> Optional
     return max(last_step // 100, 1)
 
 
-def _get_current_rung(trial: "optuna.trial.FrozenTrial") -> int:
+def _get_current_rung(trial: "core.trial.FrozenTrial") -> int:
 
     # The following loop takes `O(log step)` iterations.
     rung = 0
@@ -218,7 +217,7 @@ def _completed_rung_key(rung: int) -> str:
 
 
 def _get_competing_values(
-    trials: List["optuna.trial.FrozenTrial"], value: float, rung_key: str
+    trials: List["core.trial.FrozenTrial"], value: float, rung_key: str
 ) -> List[float]:
 
     competing_values = [t.system_attrs[rung_key] for t in trials if rung_key in t.system_attrs]
@@ -230,7 +229,7 @@ def _is_trial_promotable_to_next_rung(
     value: float,
     competing_values: List[float],
     reduction_factor: int,
-    study_direction: core.study.StudyDirection,
+    study_direction: "core.study.StudyDirection",
 ) -> bool:
 
     promotable_idx = (len(competing_values) // reduction_factor) - 1

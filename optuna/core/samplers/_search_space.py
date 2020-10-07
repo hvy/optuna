@@ -3,9 +3,8 @@ import copy
 from typing import Dict
 from typing import Optional
 
-import optuna
-from optuna.distributions import BaseDistribution
-from optuna.study import BaseStudy
+from optuna import core
+from optuna.core.distributions import BaseDistribution
 
 
 class IntersectionSearchSpace(object):
@@ -28,7 +27,7 @@ class IntersectionSearchSpace(object):
         self._study_id = None  # type: Optional[int]
 
     def calculate(
-        self, study: BaseStudy, ordered_dict: bool = False
+        self, study: "core.study.BaseStudy", ordered_dict: bool = False
     ) -> Dict[str, BaseDistribution]:
         """Returns the intersection search space of the :class:`~optuna.study.BaseStudy`.
 
@@ -61,7 +60,7 @@ class IntersectionSearchSpace(object):
             if not trial.state.is_finished():
                 next_cursor = trial.number
 
-            if trial.state != optuna.trial.TrialState.COMPLETE:
+            if trial.state != core.trial.TrialState.COMPLETE:
                 continue
 
             if self._search_space is None:
@@ -88,7 +87,7 @@ class IntersectionSearchSpace(object):
 
 
 def intersection_search_space(
-    study: BaseStudy, ordered_dict: bool = False
+    study: "core.study.BaseStudy", ordered_dict: bool = False
 ) -> Dict[str, BaseDistribution]:
     """Return the intersection search space of the :class:`~optuna.study.BaseStudy`.
 

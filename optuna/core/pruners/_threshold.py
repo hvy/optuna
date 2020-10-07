@@ -2,7 +2,7 @@ import math
 from typing import Any
 from typing import Optional
 
-import optuna
+from optuna import core
 from optuna.core.pruners._base import BasePruner
 from optuna.core.pruners._percentile import _is_first_in_interval_step
 
@@ -111,7 +111,7 @@ class ThresholdPruner(BasePruner):
         self._n_warmup_steps = n_warmup_steps
         self._interval_steps = interval_steps
 
-    def prune(self, study: "optuna.study.Study", trial: "optuna.trial.FrozenTrial") -> bool:
+    def prune(self, study: "core.study.Study", trial: "core.trial.FrozenTrial") -> bool:
 
         step = trial.last_step
         if step is None:

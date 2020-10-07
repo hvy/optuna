@@ -216,7 +216,7 @@ class MultiObjectiveStudy(object):
     :func:`~optuna.multi_objective.study.load_study` respectively.
     """
 
-    def __init__(self, study: Study):
+    def __init__(self, study: core.study.Study):
         self._study = study
 
         self._directions = []
@@ -327,6 +327,7 @@ class MultiObjectiveStudy(object):
         else:
             wrapped_callbacks = [wrap_mo_callback(callback) for callback in callbacks]
 
+        assert isinstance(self._study, Study)
         self._study.optimize(
             mo_objective,
             timeout=timeout,
