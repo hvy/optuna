@@ -8,8 +8,6 @@ from logging import WARN  # NOQA
 from logging import WARNING  # NOQA
 import threading
 
-import colorlog
-
 from optuna import type_checking
 
 
@@ -18,17 +16,6 @@ if type_checking.TYPE_CHECKING:
 
 _lock = threading.Lock()
 _default_handler = None  # type: Optional[logging.Handler]
-
-
-def create_default_formatter() -> colorlog.ColoredFormatter:
-    """Create a default formatter of log messages.
-
-    This function is not supposed to be directly accessed by library users.
-    """
-
-    return colorlog.ColoredFormatter(
-        "%(log_color)s[%(levelname)1.1s %(asctime)s]%(reset)s %(message)s"
-    )
 
 
 def _get_library_name() -> str:
@@ -50,7 +37,6 @@ def _configure_library_root_logger() -> None:
             # This library has already configured the library root logger.
             return
         _default_handler = logging.StreamHandler()  # Set sys.stderr as stream.
-        _default_handler.setFormatter(create_default_formatter())
 
         # Apply our default configuration to the library root logger.
         library_root_logger = _get_library_root_logger()
