@@ -7,12 +7,8 @@ from logging import INFO  # NOQA
 from logging import WARN  # NOQA
 from logging import WARNING  # NOQA
 import threading
+from typing import Optional  # NOQA
 
-from optuna import type_checking
-
-
-if type_checking.TYPE_CHECKING:
-    from typing import Optional  # NOQA
 
 _lock = threading.Lock()
 _default_handler = None  # type: Optional[logging.Handler]

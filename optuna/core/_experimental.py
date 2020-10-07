@@ -6,7 +6,7 @@ from typing import Callable
 from typing import Optional
 import warnings
 
-from optuna.exceptions import ExperimentalWarning
+from optuna.core.exceptions import ExperimentalWarning
 
 
 _EXPERIMENTAL_NOTE_TEMPLATE = """
