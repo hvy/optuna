@@ -6,8 +6,6 @@ from typing import Callable
 from typing import Optional
 import warnings
 
-from packaging import version
-
 from optuna.core._experimental import _get_docstring_indent
 from optuna.core._experimental import _validate_version
 
@@ -22,7 +20,7 @@ _DEPRECATION_NOTE_TEMPLATE = """
 
 
 def _validate_two_version(old_version: str, new_version: str) -> None:
-    if version.parse(old_version) > version.parse(new_version):
+    if old_version > new_version:
         raise ValueError(
             "Invalid version relationship. The deprecated version must be smaller than "
             "the removed version, but (deprecated version, removed version) = ({}, {}) are "
@@ -35,9 +33,7 @@ def _format_text(text: str) -> str:
 
 
 def _get_removed_version_from_deprecated_version(deprecated_version: str) -> str:
-    parsed_deprecated_version = version.parse(deprecated_version)
-    assert isinstance(parsed_deprecated_version, version.Version)  # Required for mypy.
-    return "{}.0.0".format(parsed_deprecated_version.major + 2)
+    return "{}.0.0".format(int(deprecated_version.split(".")[0]) + 2)
 
 
 def deprecated(
