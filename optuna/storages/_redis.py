@@ -5,6 +5,7 @@ from typing import Any  # NOQA
 from typing import Dict  # NOQA
 from typing import List  # NOQA
 from typing import Optional  # NOQA
+from typing import Union
 
 import optuna
 from optuna import distributions
@@ -62,6 +63,18 @@ class RedisStorage(BaseStorage):
         make sure Redis in installed and running.
         Please execute ``$ pip install -U redis`` to install redis python library.
     """
+
+    # Study ID to trial ID of best trial.
+    _STUDY_ID_BEST_TRIAL_ID_PKL_KEY = "study_id:{study_id:010d}:best_trial_id"
+
+    # Study ID to study direction.
+    _STUDY_ID_STUDY_DIRECTION_PKL_KEY = "study_id:{study_id:010d}:direction"
+
+    _STUDY_ID_STUDY_NAME_KEY = "study_id:{study_id:010d}:study_name"
+    _STUDY_ID_STUDY_SUMMARY_PKL_KEY = "study_id:{study_id:010d}:study_summary"
+    _STUDY_ID_TRIAL_ID_PKL_LIST_KEY = "study_id:{study_id:010d}:trial_list"
+    _TRIAL_ID_TRIAL_PKL_KEY = "trial_id:{trial_id:010d}:frozentrial"
+    _TRIAL_ID_STUDY_ID_PKL_KEY = "trial_id:{trial_id:010d}:study_id"
 
     def __init__(self, url: str) -> None:
 
@@ -281,58 +294,94 @@ class RedisStorage(BaseStorage):
         return study_summaries
 
     def create_new_trial(self, study_id: int, template_trial: Optional[FrozenTrial] = None) -> int:
+        study_id_number_key = "study_id:{:010d}:trial_number".format(study_id)
+        study_id_trial_list_key = "study_id:{:010d}:trial_list".format(study_id)
+        trial_counter_key = "trial_counter"
+        trial_id_study_id_key = "trial_id:{:010d}:study_id"
 
-        self._check_study_id(study_id)
-
-        if template_trial is None:
-            trial = self._create_running_trial()
-        else:
+        if template_trial is not None:
             trial = copy.deepcopy(template_trial)
+        else:
+            trial = FrozenTrial(
+                trial_id=-1,  # dummy value.
+                number=-1,  # dummy value.
+                state=TrialState.RUNNING,
+                params={},
+                distributions={},
+                user_attrs={},
+                system_attrs={},
+                value=None,
+                intermediate_values={},
+                datetime_start=datetime.now(),
+                datetime_complete=None,
+            )
 
-        if not self._redis.exists("trial_counter"):
-            self._redis.set("trial_counter", -1)
+        import threading
 
-        trial_id = self._redis.incr("trial_counter", 1)
-        trial_number = self._redis.incr("study_id:{:010d}:trial_number".format(study_id))
-        trial.number = trial_number
-        trial._trial_id = trial_id
+        def transaction(pipe: redis.client.Pipeline) -> None:
+            _check_study_exists(pipe, study_id)
 
-        with self._redis.pipeline() as pipe:
+            trial_counter = pipe.get(trial_counter_key)
+            if trial_counter is None:
+                print('New trial', threading.get_ident())
+                trial_counter = 0
+            else:
+                print('Increment trial from', trial_counter, threading.get_ident())
+                trial_counter = int(trial_counter)
+                trial_counter += 1
+
+            trial_id = trial_counter
+
+            number = pipe.get(study_id_number_key)
+            print('Number', number, threading.get_ident())
+            number = int(number)
+            number += 1
+
+            trial._trial_id = trial_id
+            trial.number = number
+
             pipe.multi()
+            pipe.set(trial_counter_key, trial_counter)
+            pipe.set(study_id_number_key, number)
             pipe.set(self._key_trial(trial_id), pickle.dumps(trial))
-            pipe.set("trial_id:{:010d}:study_id".format(trial_id), pickle.dumps(study_id))
-            pipe.rpush("study_id:{:010d}:trial_list".format(study_id), trial_id)
-            pipe.execute()
+            pipe.set(trial_id_study_id_key.format(trial_id), pickle.dumps(study_id))
+            pipe.rpush(study_id_trial_list_key, trial_id)
 
-            pipe.multi()
-            study_summary = self._get_study_summary(study_id)
-            study_summary.n_trials = len(self._get_study_trials(study_id))
-            min_datetime_start = min([t.datetime_start for t in self.get_all_trials(study_id)])
-            study_summary.datetime_start = min_datetime_start
-            pipe.set(self._key_study_summary(study_id), pickle.dumps(study_summary))
-            pipe.execute()
+        self._redis.transaction(
+            transaction,
+            trial_counter_key,
+            study_id_number_key,
+            study_id_trial_list_key,
+        )
+
+        self._update_study_summary(study_id)
 
         if trial.state.is_finished():
-            self._update_cache(trial_id)
+            self._update_best_trial(trial._trial_id)
 
-        return trial_id
+        return trial._trial_id
 
-    @staticmethod
-    def _create_running_trial() -> FrozenTrial:
+    def _update_study_summary(self, study_id: int) -> None:
+        study_summary_key = self._key_study_summary(study_id)
+        study_trial_list_key = "study_id:{:010d}:trial_list".format(study_id)
 
-        return FrozenTrial(
-            trial_id=-1,  # dummy value.
-            number=-1,  # dummy value.
-            state=TrialState.RUNNING,
-            params={},
-            distributions={},
-            user_attrs={},
-            system_attrs={},
-            value=None,
-            intermediate_values={},
-            datetime_start=datetime.now(),
-            datetime_complete=None,
-        )
+        def transaction(pipe: redis.client.Pipeline) -> None:
+            _check_study_exists(pipe, study_id)
+
+            study_summary_pkl = pipe.get(study_summary_key)
+            study_summary = pickle.loads(study_summary_pkl)
+
+            study_trial_list = pipe.lrange(study_trial_list_key, 0, -1)
+            study_summary.n_trials = len(study_trial_list)
+            study_summary.datetime_start = min(
+                pickle.loads(pipe.get(self._key_trial(int(trial_id)))).datetime_start
+                for trial_id in study_trial_list
+            )
+
+            pipe.multi()
+            pipe.set(study_summary_key, pickle.dumps(study_summary))
+
+        self._redis.transaction(transaction, study_summary_key)
 
     def set_trial_state(self, trial_id: int, state: TrialState) -> bool:
 
@@ -347,7 +396,7 @@ class RedisStorage(BaseStorage):
         if state.is_finished():
             trial.datetime_complete = datetime.now()
             self._redis.set(self._key_trial(trial_id), pickle.dumps(trial))
-            self._update_cache(trial_id)
+            self._update_best_trial(trial_id)
         else:
             self._redis.set(self._key_trial(trial_id), pickle.dumps(trial))
 
@@ -445,33 +494,66 @@ class RedisStorage(BaseStorage):
         trial.value = value
         self._redis.set(self._key_trial(trial_id), pickle.dumps(trial))
 
-    def _update_cache(self, trial_id: int) -> None:
+    def _update_best_trial(self, trial_id: int) -> None:
+        study_id_pkl = self._redis.get(
+            RedisStorage._TRIAL_ID_STUDY_ID_PKL_KEY.format(trial_id=trial_id)
+        )
+        study_id = pickle.loads(study_id_pkl)
 
-        trial = self.get_trial(trial_id)
-        if trial.state != TrialState.COMPLETE:
-            return
-        study_id = self.get_study_id_from_trial_id(trial_id)
-        if not self._redis.exists("study_id:{:010d}:best_trial_id".format(study_id)):
-            self._set_best_trial(study_id, trial_id)
-            return
+        def transaction(pipe: redis.client.Pipeline) -> None:
+            _check_study_exists(pipe, study_id)
+            _check_trial_exists(pipe, trial_id)
 
-        best_value_or_none = self.get_best_trial(study_id).value
-        assert best_value_or_none is not None
-        assert trial.value is not None
-        best_value = float(best_value_or_none)
-        new_value = float(trial.value)
+            trial_pkl = pipe.get(RedisStorage._TRIAL_ID_TRIAL_PKL_KEY.format(trial_id=trial_id))
+            trial = pickle.loads(trial_pkl)
+            if trial.state != TrialState.COMPLETE:
+                return
 
-        # Complete trials do not have `None` values.
-        assert new_value is not None
+            is_new_better = False
 
-        if self.get_study_direction(study_id) == StudyDirection.MAXIMIZE:
-            if new_value > best_value:
-                self._set_best_trial(study_id, trial_id)
-        else:
-            if new_value < best_value:
-                self._set_best_trial(study_id, trial_id)
+            if not pipe.exists(
+                RedisStorage._STUDY_ID_BEST_TRIAL_ID_PKL_KEY.format(study_id=study_id)
+            ):
+                is_new_better = True
+            else:
+                best_trial = _get_best_trial_with_pipe(pipe, study_id)
 
-        return
+                # TODO(hvy): Do we need to cast? Skip casting if not necessary.
+                best_value = float(best_trial.value)
+                new_value = float(trial.value)
+
+                if _get_study_direction_with_pipe(pipe, study_id) == StudyDirection.MAXIMIZE:
+                    if new_value > best_value:
+                        is_new_better = True
+                else:
+                    if new_value < best_value:
+                        is_new_better = True
+
+            if is_new_better:
+                # No best trial is associated with this study. Set the current trial.
+                study_summary_pkl = pipe.get(
+                    RedisStorage._STUDY_ID_STUDY_SUMMARY_PKL_KEY.format(study_id=study_id),
+                )
+                study_summary = pickle.loads(study_summary_pkl)
+                study_summary.best_trial = trial
+
+                # Write.
+                pipe.multi()
+                pipe.set(
+                    RedisStorage._STUDY_ID_BEST_TRIAL_ID_PKL_KEY.format(study_id=study_id),
+                    pickle.dumps(trial_id),
+                )
+                pipe.set(
+                    RedisStorage._STUDY_ID_STUDY_SUMMARY_PKL_KEY.format(study_id=study_id),
+                    pickle.dumps(study_summary),
+                )
+
+        self._redis.transaction(
+            transaction,
+            RedisStorage._TRIAL_ID_STUDY_ID_PKL_KEY.format(trial_id=trial_id),
+            RedisStorage._STUDY_ID_BEST_TRIAL_ID_PKL_KEY.format(study_id=study_id),
+            RedisStorage._STUDY_ID_STUDY_SUMMARY_PKL_KEY.format(study_id=study_id),
+        )
 
     def set_trial_intermediate_value(
         self, trial_id: int, step: int, intermediate_value: float
@@ -505,12 +587,20 @@ class RedisStorage(BaseStorage):
         return "trial_id:{:010d}:frozentrial".format(trial_id)
 
     def get_trial(self, trial_id: int) -> FrozenTrial:
+        frozen_trial_pkl = self._redis.transaction(
+            lambda pipe: self._get_trial_with_pipe(pipe, trial_id),
+            self._key_trial(trial_id),
+        )[0]
 
-        self._check_trial_id(trial_id)
-
-        frozen_trial_pkl = self._redis.get(self._key_trial(trial_id))
         assert frozen_trial_pkl is not None
         return pickle.loads(frozen_trial_pkl)
+
+    def _get_trial_with_pipe(self, pipe: "redis.client.Pipeline", trial_id: int) -> FrozenTrial:
+        if not pipe.exists(RedisStorage._TRIAL_ID_TRIAL_PKL_KEY.format(trial_id=trial_id)):
+            raise KeyError("Trial with id {} does not exist.".format(trial_id))
+
+        pipe.multi()
+        pipe.get(self._key_trial(trial_id))
 
     def _set_trial(self, trial_id: int, trial: FrozenTrial) -> None:
 
@@ -525,11 +615,20 @@ class RedisStorage(BaseStorage):
             pipe.execute()
 
     def _get_study_trials(self, study_id: int) -> List[int]:
-
-        self._check_study_id(study_id)
-
+        study_list_key = "study_list"
         study_trial_list_key = "study_id:{:010d}:trial_list".format(study_id)
-        return [int(tid) for tid in self._redis.lrange(study_trial_list_key, 0, -1)]
+
+        def transaction(pipe: redis.client.Pipeline) -> None:
+            self._check_study_id(study_id)
+
+            pipe.multi()
+            pipe.lrange(study_trial_list_key, 0, -1)
+
+        ret = self._redis.transaction(transaction, study_list_key, study_trial_list_key)
+
+        study_trial_list = ret[0]
+
+        return [int(tid) for tid in study_trial_list]
 
     def get_all_trials(self, study_id: int, deepcopy: bool = True) -> List[FrozenTrial]:
 
@@ -550,11 +649,120 @@ class RedisStorage(BaseStorage):
         self._check_study_id(study_id)
 
     def _check_study_id(self, study_id: int) -> None:
-
         if not self._redis.exists("study_id:{:010d}:study_name".format(study_id)):
             raise KeyError("study_id {} does not exist.".format(study_id))
 
     def _check_trial_id(self, trial_id: int) -> None:
-
-        if not self._redis.exists(self._key_trial(trial_id)):
+        if not self._redis.exists(RedisStorage._TRIAL_ID_TRIAL_PKL_KEY.format(trial_id=trial_id)):
             raise KeyError("study_id {} does not exist.".format(trial_id))
+
+    @staticmethod
+    def _get_study_id_from_trial_id_with_pipe(pipe: "redis.client.Pipeline", trial_id: int) -> int:
+        assert not pipe.explicit_transaction
+        return pickle.loads(pipe.get(RedisStorage._TRIAL_ID_STUDY_ID_PKL_KEY.format(trial_id)))
+
+    def _check_study_exists(study_id: int) -> None:
+        _check_study_exists(self._redis, study_id)
+
+    def _check_trial_exists(trial_id: int) -> None:
+        _check_trial_exists(self._redis, study_id)
+
+
+def _check_study_exists(
+    client: Union["redis.client.Redis", "redis.client.Pipeline"], study_id: int
+) -> None:
+    if isinstance(client, redis.client.Pipeline):
+        assert not client.explicit_transaction  # Must be immediate and not MULTI.
+
+    if not client.exists(RedisStorage._STUDY_ID_STUDY_NAME_KEY.format(study_id=study_id)):
+        raise KeyError("Study with id {} does not exist.".format(study_id))
+
+
+def _check_trial_exists(
+    client: Union["redis.client.Redis", "redis.client.Pipeline"], trial_id: int
+) -> None:
+    if isinstance(client, redis.client.Pipeline):
+        assert not client.explicit_transaction  # Must be immediate and not MULTI.
+
+    if not client.exists(RedisStorage._TRIAL_ID_TRIAL_PKL_KEY.format(trial_id=trial_id)):
+        raise KeyError("Trial with {} does not exist.".format(trial_id))
+
+
+def _get_best_trial_with_pipe(pipe: "redis.client.Pipeline", study_id: int) -> FrozenTrial:
+    assert not pipe.explicit_transaction  # Must be immediate and not MULTI.
+
+    best_trial_id_pkl = pipe.get(
+        RedisStorage._STUDY_ID_BEST_TRIAL_ID_PKL_KEY.format(study_id=study_id)
+    )
+    best_trial_id = pickle.loads(best_trial_id_pkl)
+
+    best_trial_pkl = pipe.get(RedisStorage._TRIAL_ID_TRIAL_PKL_KEY.format(trial_id=best_trial_id))
+    best_trial = pickle.loads(best_trial_pkl)
+
+    return best_trial
+
+    """
+    if not pipe.exists(_STUDY_ID_BEST_TRIAL_ID_PKL_KEY.format(study_id)):
+        trials = _get_trials_with_pipe(pipe, study_id)
+        trials = [t for t in trials if t.state is TrialState.COMPLETE]
+
+        if len(trials) == 0:
+            raise ValueError("No trials are completed yet.")
+
+        if _get_study_direction_with_pipe(pipe, study_id) == StudyDirection.MAXIMIZE:
+            best_trial = max(trials, key=lambda t: t.value)
+        else:
+            best_trial = min(trials, key=lambda t: t.value)
+
+        # TODO(hvy): Set at caller after MULTI.
+        # self._set_best_trial(study_id, best_trial.number)
+    else:
+        best_trial_id_pkl = pipe.get(RedisStorage._STUDY_ID_BEST_TRIAL_ID_PKL_KEY.format((study_id)))
+        assert best_trial_id_pkl is not None
+        best_trial_id = pickle.loads(best_trial_id_pkl)
+        best_trial_pkl = pipe.get(RedisStorage._TRIAL_ID_TRIAL_PKL_KEY.format(best_trial_id))
+        best_trial = pickle.loads(best_trial_pkl)
+
+    return best_trial
+    """
+
+
+def _get_study_direction_with_pipe(pipe, study_id):
+    assert not pipe.explicit_transaction  # Must be immediate and not MULTI.
+
+    direction_pkl = pipe.get(
+        RedisStorage._STUDY_ID_STUDY_DIRECTION_PKL_KEY.format(study_id=study_id)
+    )
+    direction = pickle.loads(direction_pkl)
+
+    return direction
+
+
+def _get_trials_with_pipe(pipe: "redis.client.Pipeline", study_id: int) -> List[FrozenTrial]:
+    assert not pipe.explicit_transaction  # Must be immediate and not MULTI.
+
+    trial_ids = pipe.lrange(
+        RedistStorage._STUDY_ID_TRIAL_ID_PKL_LIST_KEY.format(study_id=study_id), 0, -1
+    )
+    trials = []
+    for trial_id in trial_ids:
+        trial_pkl = pipe.get(RedisStorage._TRIAL_ID_TRIAL_PKL_KEY.format(trial_id=int(trial_id)))
+        trial = pickle.loads(trial_pkl)
+        trials.append(trial)
+
+    return trials
+
+
+def _get_trial_with_pipe(pipe: "redis.client.Pipeline", trial_id: int) -> List[FrozenTrial]:
+    assert not pipe.explicit_transaction  # Must be immediate and not MULTI.
+
+    trial_ids = pipe.lrange(
+        RedistStorage._STUDY_ID_TRIAL_ID_PKL_LIST_KEY.format(study_id=study_id), 0, -1
+    )
+    trials = []
+    for trial_id in trial_ids:
+        trial_pkl = pipe.get(RedisStorage._TRIAL_ID_TRIAL_PKL_KEY.format(trial_id=int(trial_id)))
+        trial = pickle.loads(trial_pkl)
+        trials.append(trial)
+
+    return trials
