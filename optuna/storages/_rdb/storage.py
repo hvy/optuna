@@ -4,6 +4,8 @@ from datetime import datetime
 import json
 import logging
 import os
+import threading
+import time
 from typing import Any
 from typing import Dict
 from typing import Generator
@@ -18,6 +20,7 @@ import alembic.command
 import alembic.config
 import alembic.migration
 import alembic.script
+from sqlalchemy import func
 from sqlalchemy import orm
 from sqlalchemy.engine import create_engine
 from sqlalchemy.engine import Engine  # NOQA
@@ -523,6 +526,10 @@ class RDBStorage(BaseStorage):
                 trial_id=trial.trial_id,
             )
 
+        if self.heartbeat_interval is not None:
+            thread = threading.Thread(target=_record_heartbeat, args=(self, trial.trial_id))
+            thread.start()
+
         return frozen
 
     def _get_prepared_new_trial(
@@ -584,7 +591,6 @@ class RDBStorage(BaseStorage):
             trial.state = template_trial.state
 
         trial.number = trial.count_past_trials(session)
-        self.record_timestamp(trial.trial_id)
         session.add(trial)
 
         return trial
@@ -745,6 +751,7 @@ class RDBStorage(BaseStorage):
                     trial.datetime_complete = datetime.now()
         except IntegrityError:
             return False
+
         return True
 
     def set_trial_param(
@@ -1176,21 +1183,17 @@ class RDBStorage(BaseStorage):
         killed_trial_ids = []
 
         with _create_scoped_session(self.scoped_session, True) as session:
-            # Assume there is no trial whose ID is -1.
-            assert models.TrialTimeStampModel.where_trial_id(-1, session) is None
-            current_timestamp = models.TrialTimeStampModel(trial_id=-1)
-            session.add(current_timestamp)
+            current_timestamp = session.execute(func.now()).scalar()
 
+        with _create_scoped_session(self.scoped_session, True) as session:
             running_trials = models.TrialModel.find_by_state(TrialState.RUNNING, session)
             for trial in running_trials:
                 self.check_trial_is_updatable(trial.trial_id, trial.state)
                 timestamp = models.TrialTimeStampModel.where_trial_id(trial.trial_id, session)
                 assert timestamp is not None
-                if (current_timestamp.timestamp - timestamp.timestamp).seconds > grace_period:
+                if (current_timestamp - timestamp.timestamp).seconds > grace_period:
                     trial.state = TrialState.FAIL
                     killed_trial_ids.append(trial.trial_id)
-
-            session.delete(current_timestamp)
 
         return killed_trial_ids
 
@@ -1333,3 +1336,23 @@ def escape_alembic_config_value(value: str) -> str:
     # is regarded as the trigger of variable expansion.
     # Please see the documentation of `configparser.BasicInterpolation` for more details.
     return value.replace("%", "%%")
+
+
+def _record_heartbeat(storage, trial_id: int) -> None:
+    assert storage.heartbeat_interval is not None
+
+    while True:
+        storage.record_timestamp(trial_id)
+
+        with _create_scoped_session(storage.scoped_session) as session:
+            state = (
+                session.query(models.TrialModel.state)
+                .filter(
+                    models.TrialModel.trial_id == trial_id,
+                )
+                .one_or_none()
+            )
+            if state is not None and state[0].is_finished():
+                return
+
+        time.sleep(storage.heartbeat_interval)

@@ -171,6 +171,7 @@ class _CachedStorage(BaseStorage):
         return self._backend.get_all_study_summaries()
 
     def create_new_trial(self, study_id: int, template_trial: Optional[FrozenTrial] = None) -> int:
+        self.kill_stale_trials()
 
         frozen_trial = self._backend._create_new_trial(study_id, template_trial)
         trial_id = frozen_trial._trial_id
