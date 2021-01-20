@@ -46,7 +46,7 @@ jobs:
           --health-retries 5
 
     # Not intended for forks.
-    if: github.repository == 'optuna/optuna'
+    if: github.repository == 'hvy/optuna'
 
     steps:
     - name: Checkout
