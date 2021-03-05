@@ -167,6 +167,7 @@ class TPESampler(BaseSampler):
         *,
         multivariate: bool = False,
         warn_independent_sampling: bool = True,
+        constant_liar=True,
     ) -> None:
 
         self._parzen_estimator_parameters = _ParzenEstimatorParameters(
@@ -184,6 +185,8 @@ class TPESampler(BaseSampler):
 
         self._multivariate = multivariate
         self._search_space = IntersectionSearchSpace(include_pruned=True)
+
+        self._constant_liar = constant_liar
 
         if multivariate:
             warnings.warn(
@@ -274,7 +277,7 @@ class TPESampler(BaseSampler):
 
         self._raise_error_if_multi_objective(study)
 
-        values, scores = _get_observation_pairs(study, param_name)
+        values, scores = _get_observation_pairs(study, param_name, self._constant_liar)
 
         n = len(values)
 
@@ -753,7 +756,7 @@ class TPESampler(BaseSampler):
 
 
 def _get_observation_pairs(
-    study: Study, param_name: str
+    study: Study, param_name: str, constant_liar: bool
 ) -> Tuple[List[Optional[float]], List[Tuple[float, float]]]:
     """Get observation pairs from the study.
 
@@ -778,7 +781,9 @@ def _get_observation_pairs(
 
     values = []
     scores = []
-    for trial in study.get_trials(deepcopy=False, states=(TrialState.COMPLETE, TrialState.PRUNED)):
+    for trial in study.get_trials(
+        deepcopy=False, states=(TrialState.COMPLETE, TrialState.PRUNED, TrialState.RUNNING)
+    ):
         if trial.state is TrialState.COMPLETE:
             if trial.value is None:
                 continue
@@ -792,6 +797,11 @@ def _get_observation_pairs(
                     score = (-step, sign * intermediate_value)
             else:
                 score = (float("inf"), 0.0)
+        elif trial.state is TrialState.RUNNING:
+            if constant_liar:
+                score = (-float("inf"), sign * float("inf"))
+            else:
+                continue
         else:
             assert False
 
