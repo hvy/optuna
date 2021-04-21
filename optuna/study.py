@@ -1428,3 +1428,17 @@ def get_all_study_summaries(storage: Union[str, storages.BaseStorage]) -> List[S
 
     storage = storages.get_storage(storage)
     return storage.get_all_study_summaries()
+
+
+class MaxTrialsCallback:
+    def __init__(
+        self, n_trials: int, states: Tuple[TrialState, ...] = (TrialState.COMPLETE,)
+    ) -> None:
+        self._n_trials = n_trials
+        self._states = states
+
+    def __call__(self, study: Study, trial: FrozenTrial) -> None:
+        trials = study.get_trials(deepcopy=False, states=self._states)
+        n_complete = len(trials)
+        if n_complete >= self._n_trials:
+            study.stop()
