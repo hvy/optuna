@@ -24,12 +24,14 @@ def objective(trial):
 
 if __name__ == "__main__":
     study = optuna.create_study(
-            study_name="test1",
+        study_name="test1",
         storage="sqlite:///database.sqlite",
         load_if_exists=True,
     )
 
-    study.optimize(objective, n_trials=50, callbacks=[MaxTrialsCallback(10, states=(TrialState.COMPLETE,))])
+    study.optimize(
+        objective, n_trials=50, callbacks=[MaxTrialsCallback(10, states=(TrialState.COMPLETE,))]
+    )
     trials = study.trials_dataframe()
     print("Number of completed trials: {}".format(len(trials[trials.state == "COMPLETE"])))
 
