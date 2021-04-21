@@ -12,8 +12,8 @@ regardless of the number of workers/scripts running the Trials.
 from time import sleep
 
 import optuna
-from optuna.trial import TrialState
 from optuna.study import MaxTrialsCallback
+from optuna.trial import TrialState
 
 
 def objective(trial):
