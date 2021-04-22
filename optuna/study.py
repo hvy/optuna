@@ -1447,6 +1447,7 @@ class MaxTrialsCallback:
             from optuna.study import MaxTrialsCallback
             from optuna.trial import TrialState
 
+
             def objective(trial):
                 x = trial.suggest_float("x", -1, 1)
                 return x ** 2
@@ -1456,7 +1457,7 @@ class MaxTrialsCallback:
             study.optimize(
                 objective,
                 n_trials=100,
-                callbacks=[MaxTrialsCallback(10, states=(TrialState.COMPLETE,))]
+                callbacks=[MaxTrialsCallback(10, states=(TrialState.COMPLETE,))],
             )
 
     Args:
