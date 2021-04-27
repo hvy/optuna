@@ -24,7 +24,7 @@ def objective(trial):
 
 if __name__ == "__main__":
     study = optuna.create_study(
-        study_name="test1",
+        study_name="test",
         storage="sqlite:///database.sqlite",
         load_if_exists=True,
     )

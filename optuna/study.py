@@ -1468,6 +1468,7 @@ class MaxTrialsCallback:
             towards the max trials limit. Default value is :obj:`(TrialState.COMPLETE,)`.
     """
 
+    @experimental("2.8.0")
     def __init__(
         self, n_trials: int, states: Tuple[TrialState, ...] = (TrialState.COMPLETE,)
     ) -> None:
