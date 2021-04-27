@@ -1430,6 +1430,7 @@ def get_all_study_summaries(storage: Union[str, storages.BaseStorage]) -> List[S
     return storage.get_all_study_summaries()
 
 
+@experimental("2.8.0")
 class MaxTrialsCallback:
     """Set a maximum number of trials before ending the study.
 
@@ -1468,7 +1469,6 @@ class MaxTrialsCallback:
             towards the max trials limit. Default value is :obj:`(TrialState.COMPLETE,)`.
     """
 
-    @experimental("2.8.0")
     def __init__(
         self, n_trials: int, states: Tuple[TrialState, ...] = (TrialState.COMPLETE,)
     ) -> None:
