@@ -27,7 +27,6 @@ from optuna import logging
 from optuna import Study
 from optuna import Trial
 from optuna import TrialPruned
-from optuna._callbacks import MaxTrialsCallback
 from optuna.exceptions import DuplicatedStudyError
 from optuna.storages import get_storage
 from optuna.study import StudyDirection
