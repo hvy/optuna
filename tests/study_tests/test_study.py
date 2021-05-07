@@ -27,9 +27,9 @@ from optuna import logging
 from optuna import Study
 from optuna import Trial
 from optuna import TrialPruned
+from optuna._callbacks import MaxTrialsCallback
 from optuna.exceptions import DuplicatedStudyError
 from optuna.storages import get_storage
-from optuna.study import MaxTrialsCallback
 from optuna.study import StudyDirection
 from optuna.testing.storage import STORAGE_MODES
 from optuna.testing.storage import StorageSupplier
@@ -1129,10 +1129,3 @@ def test_study_summary_datetime_start_calculation(storage_mode: str) -> None:
         study.enqueue_trial(params={"x": 1})
         summaries = study._storage.get_all_study_summaries()
         assert summaries[0].datetime_start is not None
-
-
-def test_stop_with_MaxTrialsCallback() -> None:
-    # Test stopping the optimization with MaxTrialsCallback.
-    study = create_study()
-    study.optimize(lambda _: 1.0, n_trials=10, callbacks=[MaxTrialsCallback(5)])
-    assert len(study.trials) == 5
