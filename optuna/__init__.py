@@ -16,6 +16,7 @@ from optuna import study
 from optuna import trial
 from optuna import version
 from optuna import visualization
+from optuna._callbacks import MaxTrialsCallback  # NOQA
 from optuna.exceptions import TrialPruned
 from optuna.study import copy_study
 from optuna.study import create_study
@@ -26,7 +27,6 @@ from optuna.study import Study
 from optuna.trial import create_trial
 from optuna.trial import Trial
 from optuna.version import __version__
-from optuna._callbacks import MaxTrialsCallback  # NOQA
 
 
 __all__ = [
