@@ -34,7 +34,6 @@ class MaxTrialsCallback:
             study = optuna.create_study()
             study.optimize(
                 objective,
-                n_trials=100,
                 callbacks=[MaxTrialsCallback(10, states=(TrialState.COMPLETE,))],
             )
 
