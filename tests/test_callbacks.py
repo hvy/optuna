@@ -3,7 +3,7 @@ from unittest.mock import Mock  # NOQA
 from optuna import create_study
 from optuna import Trial
 from optuna import TrialPruned
-from optuna._callbacks import MaxTrialsCallback
+from optuna.study import MaxTrialsCallback
 from optuna.trial import TrialState
 
 
