@@ -44,14 +44,14 @@ class MaxTrialsCallback:
     """
 
     def __init__(
-            self, n_trials: int, states: Tuple[TrialState, ...] = (TrialState.COMPLETE,)
-        ) -> None:
+        self, n_trials: int, states: Tuple[TrialState, ...] = (TrialState.COMPLETE,)
+    ) -> None:
         self._n_trials = n_trials
         self._states = states
 
     def __call__(
-            self, study: "optuna.study.Study", trial: FrozenTrial
-        ) -> None:  # NOQA # type: ignore
+        self, study: "optuna.study.Study", trial: FrozenTrial
+    ) -> None:  # NOQA # type: ignore
         trials = study.get_trials(deepcopy=False, states=self._states)
         n_complete = len(trials)
         if n_complete >= self._n_trials:
