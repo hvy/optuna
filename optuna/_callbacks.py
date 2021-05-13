@@ -44,8 +44,8 @@ class MaxTrialsCallback:
     """
 
     def __init__(
-        self, n_trials: int, states: Tuple[TrialState, ...] = (TrialState.COMPLETE,)
-    ) -> None:
+            self, n_trials: int, states: Tuple[TrialState, ...] = (TrialState.COMPLETE,)
+        ) -> None:
         self._n_trials = n_trials
         self._states = states
 
