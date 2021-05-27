@@ -373,29 +373,20 @@ class _ParzenEstimator:
 
             if not multivariate:
                 assert sigmas0 is None
-                pairs_of_observation_and_idx = np.asarray(
-                    [(low, -1)]
-                    + [(x, i) for i, x in enumerate(observations)]
-                    + [(high, n_observations + 1)]
-                    + [(prior_mu, n_observations)]
+
+                sorted_indices = np.argsort(mus)
+                sorted_mus = mus[sorted_indices]
+                sorted_mus_with_endpoints = np.empty(mus.shape[0] + 2, dtype=float)
+                sorted_mus_with_endpoints[0] = low
+                sorted_mus_with_endpoints[1:-1] = sorted_mus
+                sorted_mus_with_endpoints[-1] = high
+
+                sorted_sigmas = np.maximum(
+                    sorted_mus_with_endpoints[1:-1] - sorted_mus_with_endpoints[0:-2],
+                    sorted_mus_with_endpoints[2:] - sorted_mus_with_endpoints[1:-1],
                 )
-                pairs_of_observation_and_idx = pairs_of_observation_and_idx[
-                    np.argsort(pairs_of_observation_and_idx[:, 0])
-                ]
-
-                pairs_of_sigma_and_idx = np.empty((n_observations + 1, 2))
-                pairs_of_sigma_and_idx[:, 0] = np.maximum(
-                    pairs_of_observation_and_idx[1:-1, 0] - pairs_of_observation_and_idx[0:-2, 0],
-                    pairs_of_observation_and_idx[2:, 0] - pairs_of_observation_and_idx[1:-1, 0],
-                )
-                pairs_of_sigma_and_idx[:, 1] = pairs_of_observation_and_idx[1:-1, 1]
-
-                sigmas = np.empty(n_observations + 1)
-                sigmas[:n_observations] = pairs_of_sigma_and_idx[
-                    np.argsort(pairs_of_sigma_and_idx[:, 1])
-                ][:-1, 0]
-                sigmas[n_observations] = prior_sigma
-
+                sigmas = sorted_sigmas[np.argsort(sorted_indices)]
+                sigmas[-1] = prior_sigma
             else:
                 assert sigmas0 is not None
                 sigmas = np.empty(n_observations + 1)
