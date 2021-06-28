@@ -802,20 +802,20 @@ def test_get_trials(storage_mode: str) -> None:
         study = create_study(storage=storage)
         study.optimize(lambda t: t.suggest_int("x", 1, 5), n_trials=5)
 
-        with patch("copy.deepcopy", wraps=copy.deepcopy) as mock_object:
-            trials0 = study.get_trials(deepcopy=False)
-            assert mock_object.call_count == 0
-            assert len(trials0) == 5
+        trials0 = study.get_trials(deepcopy=False)
+        assert len(trials0) == 5
 
-            trials1 = study.get_trials(deepcopy=True)
-            assert mock_object.call_count > 0
-            assert trials0 == trials1
+        trials1 = study.get_trials(deepcopy=True)
+        assert trials0 == trials1
 
-            # `study.trials` is equivalent to `study.get_trials(deepcopy=True)`.
-            old_count = mock_object.call_count
-            trials2 = study.trials
-            assert mock_object.call_count > old_count
-            assert trials0 == trials2
+        # Check modifying output does not break the internal state of the storage.
+        trials1_original = copy.deepcopy(trials1)
+        trials1[0].params["x"] = 0.1
+
+        # `study.trials` is equivalent to `study.get_trials(deepcopy=True)`.
+        trials2 = study.trials
+        assert trials0 == trials1_original
+        assert trials0 == trials2
 
 
 @pytest.mark.parametrize("storage_mode", STORAGE_MODES)

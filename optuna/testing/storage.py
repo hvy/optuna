@@ -12,6 +12,7 @@ import optuna
 
 STORAGE_MODES = [
     "inmemory",
+    "multiprocess",
     "sqlite",
     "cache",
     "redis",
@@ -30,6 +31,8 @@ class StorageSupplier(object):
 
         if self.storage_specifier == "inmemory":
             return optuna.storages.InMemoryStorage()
+        elif self.storage_specifier == "multiprocess":
+            return optuna.storages.MultiprocessInMemoryStorage()
         elif self.storage_specifier == "sqlite":
             self.tempfile = tempfile.NamedTemporaryFile()
             url = "sqlite:///{}".format(self.tempfile.name)
