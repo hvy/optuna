@@ -24,6 +24,6 @@ RUN if [ "${BUILD_TYPE}" = "dev" ]; then \
     else \
         pip install ${PIP_OPTIONS} -e .; \
     fi \
-    && pip install ${PIP_OPTIONS} jupyter notebook
+    && pip install ${PIP_OPTIONS} jupyter notebook PyMySQL cryptography psycopg2-binary
 
 ENV PIP_OPTIONS ""
