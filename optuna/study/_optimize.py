@@ -241,7 +241,7 @@ def _run_trial(
             else:
                 assert False, "Should not reach."
         else:
-            assert False, "Should not reach."
+            assert False, f"Should not reach. Trial state: {frozen_trial.state}."
 
     if (
         frozen_trial.state == TrialState.FAIL

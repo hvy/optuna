@@ -21,7 +21,7 @@ _logger = logging.get_logger(__name__)
 
 
 def _get_frozen_trial(study: "optuna.Study", trial: Union[trial_module.Trial, int]) -> FrozenTrial:
-    if isinstance(trial, trial_module.Trial):
+    if isinstance(trial, trial_module.BaseTrial):
         trial_id = trial._trial_id
     elif isinstance(trial, int):
         trial_number = trial

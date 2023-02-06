@@ -516,10 +516,15 @@ class Study:
         trial_id = self._pop_waiting_trial_id()
         if trial_id is None:
             trial_id = self._storage.create_new_trial(self._study_id)
-        trial = trial_module.Trial(self, trial_id)
 
-        for name, param in fixed_distributions.items():
-            trial._suggest(name, param)
+        from optuna.samplers._base_v2 import BaseSamplerV2
+        if isinstance(self.sampler, BaseSamplerV2):
+            trial = trial_module.TrialV2(self, trial_id)
+        else:
+            trial = trial_module.Trial(self, trial_id)
+
+            for name, param in fixed_distributions.items():
+                trial._suggest(name, param)
 
         return trial
 
